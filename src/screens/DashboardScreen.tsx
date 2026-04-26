@@ -1,37 +1,33 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   ScrollView,
   StyleSheet,
-  ActivityIndicator,
   SafeAreaView,
   TouchableOpacity,
+  RefreshControl,
 } from 'react-native';
-import { DollarSign, TrendingUp, Wallet, Percent, TrendingDown } from 'lucide-react-native';
-import { useExpenseData } from '../hooks/useExpenseData';
-import { useMetrics } from '../hooks/useMetrics';
+import { DollarSign, TrendingUp, Wallet, Percent, AlertCircle } from 'lucide-react-native';
+import { useSummary } from '../hooks/useSummary';
+import { useRecentTransactions, RecentTransaction } from '../hooks/useRecentTransactions';
 import { formatCurrency, formatPercentage, formatShortDate } from '../lib/formatters';
-import { getCategoryById } from '../lib/mockData';
 import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../constants/theme';
 
-// ─── Metric Card ────────────────────────────────────────────────────────────
+// ─── Metric Card ─────────────────────────────────────────────────────────────
 function MetricCard({
   label,
   value,
-  change,
-  trend,
+  trend = 'neutral',
   icon: Icon,
 }: {
   label: string;
   value: number;
-  change: number;
-  trend: 'up' | 'down' | 'neutral';
+  trend?: 'up' | 'down' | 'neutral';
   icon: any;
 }) {
   const isPositive = trend === 'up';
   const isNeutral = trend === 'neutral';
-  const trendColor = isPositive ? colors.primary : isNeutral ? colors.textSecondary : colors.red;
   const bgColor = isPositive ? colors.primaryLight : isNeutral ? colors.border : colors.redLight;
   const iconColor = isPositive ? colors.primary : isNeutral ? colors.textSecondary : colors.red;
 
@@ -41,16 +37,6 @@ function MetricCard({
         <View style={[styles.metricIconBg, { backgroundColor: bgColor }]}>
           <Icon size={20} color={iconColor} />
         </View>
-        {!isNeutral && (
-          <View style={styles.metricTrend}>
-            <Text style={[styles.metricChange, { color: trendColor }]}>{change}%</Text>
-            {isPositive ? (
-              <TrendingUp size={14} color={trendColor} />
-            ) : (
-              <TrendingDown size={14} color={trendColor} />
-            )}
-          </View>
-        )}
       </View>
       <Text style={styles.metricLabel}>{label}</Text>
       <Text style={styles.metricValue}>
@@ -60,43 +46,86 @@ function MetricCard({
   );
 }
 
+// ─── Skeleton ────────────────────────────────────────────────────────────────
+function Skeleton({ height = 60, style }: { height?: number; style?: object }) {
+  return <View style={[styles.skeleton, { height }, style]} />;
+}
+
+// ─── Category icon map (backend categories → emoji) ──────────────────────────
+const CATEGORY_ICONS: Record<string, string> = {
+  food: '🍽️',
+  shopping: '🛍️',
+  travel: '🚗',
+  utilities: '💡',
+  entertainment: '🎬',
+  health: '⚕️',
+  finance: '💹',
+  transfer: '🔁',
+  other: '💳',
+};
+
 // ─── Transaction Item ────────────────────────────────────────────────────────
-function TransactionItem({ transaction }: { transaction: any }) {
-  const category = getCategoryById(transaction.category);
-  const isIncome = transaction.type === 'income';
+function TransactionItem({ transaction }: { transaction: RecentTransaction }) {
+  const isIncome = transaction.transactionType === 'credit';
+  const icon = transaction.category ? (CATEGORY_ICONS[transaction.category] ?? '💳') : '💳';
 
   return (
     <View style={styles.txItem}>
       <View style={styles.txLeft}>
-        <Text style={styles.txIcon}>{category?.icon ?? '💳'}</Text>
-        <View>
-          <Text style={styles.txMerchant}>{transaction.merchant}</Text>
-          <Text style={styles.txDate}>{formatShortDate(transaction.date)}</Text>
+        <Text style={styles.txIcon}>{icon}</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.txMerchant} numberOfLines={1}>
+            {transaction.merchant ?? transaction.subject ?? 'Transaction'}
+          </Text>
+          <Text style={styles.txDate}>{formatShortDate(transaction.emailDate)}</Text>
         </View>
       </View>
       <View style={styles.txRight}>
         <Text style={[styles.txAmount, isIncome && styles.txIncome]}>
           {isIncome ? '+' : '-'}{formatCurrency(transaction.amount)}
         </Text>
-        {transaction.isRecurring && <Text style={styles.txRecurring}>Recurring</Text>}
+        {transaction.category && (
+          <Text style={styles.txCategory}>
+            {transaction.category.charAt(0).toUpperCase() + transaction.category.slice(1)}
+          </Text>
+        )}
       </View>
     </View>
   );
 }
 
-// ─── Skeleton ────────────────────────────────────────────────────────────────
-function Skeleton({ height = 60, style }: { height?: number; style?: object }) {
-  return <View style={[styles.skeleton, { height }, style]} />;
+// ─── Error Card ──────────────────────────────────────────────────────────────
+function ErrorCard({ onRetry }: { onRetry: () => void }) {
+  return (
+    <View style={[styles.errorCard, shadow.sm]}>
+      <AlertCircle size={20} color={colors.red} />
+      <Text style={styles.errorText}>Could not load data</Text>
+      <TouchableOpacity style={styles.retryBtn} onPress={onRetry}>
+        <Text style={styles.retryText}>Retry</Text>
+      </TouchableOpacity>
+    </View>
+  );
 }
 
 // ─── Dashboard Screen ────────────────────────────────────────────────────────
 export default function DashboardScreen() {
-  const { data, isLoading } = useExpenseData();
-  const metrics = useMetrics(data?.transactions);
+  const { data: summary, isLoading, isError, refetch: refetchSummary } = useSummary('month');
+  const { data: recentTxs, isLoading: txLoading, refetch: refetchTxs } = useRecentTransactions(10);
 
-  const [showAll, setShowAll] = React.useState(false);
-  const transactions = data?.transactions ?? [];
-  const displayed = showAll ? transactions.slice(0, 20) : transactions.slice(0, 10);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([refetchSummary(), refetchTxs()]);
+    setRefreshing(false);
+  };
+
+  const savingsRate =
+    summary && summary.totalIncome > 0
+      ? Math.round((summary.totalSavings / summary.totalIncome) * 100)
+      : 0;
+
+  const transactions = recentTxs ?? [];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -104,6 +133,14 @@ export default function DashboardScreen() {
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
       >
         {/* Header */}
         <View style={styles.header}>
@@ -116,46 +153,81 @@ export default function DashboardScreen() {
           </View>
         </View>
 
+        {/* Error State */}
+        {isError && <ErrorCard onRetry={refetchSummary} />}
+
         {/* Metrics Grid */}
         <Text style={styles.sectionTitle}>This Month</Text>
         {isLoading ? (
           <View style={styles.metricsGrid}>
-            {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} height={100} />)}
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} height={100} />
+            ))}
           </View>
-        ) : (
+        ) : !isError && summary ? (
           <View style={styles.metricsGrid}>
-            <MetricCard label="Total Expenses" value={metrics.totalExpenses.value} change={metrics.totalExpenses.change} trend={metrics.totalExpenses.trend} icon={DollarSign} />
-            <MetricCard label="Total Income" value={metrics.totalIncome.value} change={metrics.totalIncome.change} trend={metrics.totalIncome.trend} icon={TrendingUp} />
-            <MetricCard label="Net Savings" value={metrics.netSavings.value} change={metrics.netSavings.change} trend={metrics.netSavings.trend} icon={Wallet} />
-            <MetricCard label="Savings Rate" value={metrics.savingsRate.value} change={metrics.savingsRate.change} trend={metrics.savingsRate.trend} icon={Percent} />
+            <MetricCard
+              label="Total Expenses"
+              value={summary.totalExpense}
+              icon={DollarSign}
+            />
+            <MetricCard
+              label="Total Income"
+              value={summary.totalIncome}
+              icon={TrendingUp}
+            />
+            <MetricCard
+              label="Net Savings"
+              value={summary.totalSavings}
+              trend={summary.totalSavings >= 0 ? 'up' : 'down'}
+              icon={Wallet}
+            />
+            <MetricCard
+              label="Savings Rate"
+              value={savingsRate}
+              trend={savingsRate > 0 ? 'up' : savingsRate < 0 ? 'down' : 'neutral'}
+              icon={Percent}
+            />
+          </View>
+        ) : null}
+
+        {/* Top Spend Category Badge */}
+        {summary?.maxSpentCategory && (
+          <View style={[styles.topSpendBadge, shadow.sm]}>
+            <Text style={styles.topSpendLabel}>Top spend this month</Text>
+            <View style={styles.topSpendRight}>
+              <Text style={styles.topSpendCategory}>
+                {summary.maxSpentCategory.category.charAt(0).toUpperCase() +
+                  summary.maxSpentCategory.category.slice(1)}
+              </Text>
+              <Text style={styles.topSpendAmount}>
+                {formatCurrency(summary.maxSpentCategory.amount)}
+              </Text>
+            </View>
           </View>
         )}
 
         {/* Recent Transactions */}
         <View style={[styles.card, shadow.sm]}>
           <Text style={styles.cardTitle}>Recent Transactions</Text>
-          {isLoading ? (
+          {txLoading ? (
             <View style={{ gap: spacing.sm }}>
-              {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} height={52} />)}
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} height={52} style={{ minWidth: undefined }} />
+              ))}
+            </View>
+          ) : transactions.length === 0 ? (
+            <View style={styles.emptyTx}>
+              <Text style={styles.emptyTxIcon}>📭</Text>
+              <Text style={styles.emptyTxText}>No transactions yet</Text>
+              <Text style={styles.emptyTxSub}>
+                Transactions from your Gmail will appear here
+              </Text>
             </View>
           ) : (
-            <>
-              {displayed.map((tx) => (
-                <TransactionItem key={tx.id} transaction={tx} />
-              ))}
-              {transactions.length > 10 && (
-                <TouchableOpacity
-                  style={styles.showMoreBtn}
-                  onPress={() => setShowAll((v) => !v)}
-                >
-                  <Text style={styles.showMoreText}>
-                    {showAll
-                      ? 'Show Less'
-                      : `Show All Transactions (${transactions.length} total)`}
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </>
+            transactions.map((tx) => (
+              <TransactionItem key={tx._id} transaction={tx} />
+            ))
           )}
         </View>
       </ScrollView>
@@ -186,6 +258,23 @@ const styles = StyleSheet.create({
   },
   avatarText: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.primary },
 
+  errorCard: {
+    backgroundColor: colors.redLight,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  errorText: { flex: 1, fontSize: fontSize.sm, color: colors.red, fontWeight: fontWeight.medium },
+  retryBtn: {
+    backgroundColor: colors.red,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+  },
+  retryText: { color: '#fff', fontSize: fontSize.sm, fontWeight: fontWeight.semibold },
+
   sectionTitle: {
     fontSize: fontSize.lg,
     fontWeight: fontWeight.semibold,
@@ -205,12 +294,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: spacing.xs,
   },
-  metricTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.xs,
-  },
+  metricTop: { marginBottom: spacing.xs },
   metricIconBg: {
     width: 40,
     height: 40,
@@ -218,10 +302,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  metricTrend: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  metricChange: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold },
   metricLabel: { fontSize: fontSize.xs, color: colors.textSecondary, fontWeight: fontWeight.medium },
   metricValue: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text },
+
+  topSpendBadge: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  topSpendLabel: { fontSize: fontSize.sm, color: colors.textSecondary, fontWeight: fontWeight.medium },
+  topSpendRight: { alignItems: 'flex-end' },
+  topSpendCategory: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.text },
+  topSpendAmount: { fontSize: fontSize.xs, color: colors.primary, fontWeight: fontWeight.semibold },
 
   card: {
     backgroundColor: colors.surface,
@@ -250,20 +345,17 @@ const styles = StyleSheet.create({
   txRight: { alignItems: 'flex-end' },
   txAmount: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text },
   txIncome: { color: colors.income },
-  txRecurring: { fontSize: fontSize.xs, color: colors.amber, fontWeight: fontWeight.medium, marginTop: 2 },
+  txCategory: { fontSize: fontSize.xs, color: colors.textMuted, marginTop: 2 },
 
-  showMoreBtn: {
-    marginTop: spacing.md,
-    paddingVertical: spacing.sm,
-    alignItems: 'center',
-    borderRadius: radius.md,
-    backgroundColor: colors.primaryLight,
-  },
-  showMoreText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.primary },
+  emptyTx: { alignItems: 'center', paddingVertical: spacing.xl },
+  emptyTxIcon: { fontSize: 36, marginBottom: spacing.sm },
+  emptyTxText: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text },
+  emptyTxSub: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: 4, textAlign: 'center' },
 
   skeleton: {
+    flex: 1,
+    minWidth: '47%',
     backgroundColor: '#E5E7EB',
-    borderRadius: radius.md,
-    marginBottom: spacing.xs,
+    borderRadius: radius.lg,
   },
 });

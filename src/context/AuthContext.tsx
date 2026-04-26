@@ -2,14 +2,11 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
+import { API_BASE } from '../lib/api';
 
 WebBrowser.maybeCompleteAuthSession();
 
 const JWT_KEY = 'spendly_jwt';
-
-// DEV: ngrok tunnel — update this URL when ngrok restarts
-// PROD: replace with your deployed backend URL
-const API_BASE = 'https://ebaf-49-205-200-47.ngrok-free.app';
 
 interface AuthUser {
   email: string;
