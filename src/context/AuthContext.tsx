@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
-import { API_BASE } from '../lib/api';
+import { API_BASE, USE_MOCK } from '../lib/api';
 import { API_ROUTES } from '../constants/api';
 import { queryClient } from '../lib/queryClient';
 
@@ -31,8 +31,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load saved token on app start
+  // Load saved token on app start (or auto-login in mock mode)
   useEffect(() => {
+    if (USE_MOCK) {
+      setToken('mock-token');
+      setIsLoading(false);
+      return;
+    }
     (async () => {
       try {
         const saved = await SecureStore.getItemAsync(JWT_KEY);
