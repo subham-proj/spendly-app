@@ -1,5 +1,12 @@
-// Central API base URL — update for production deployment
-export const API_BASE = 'https://ebaf-49-205-200-47.ngrok-free.app';
+// Set EXPO_PUBLIC_API_URL in .env (dev) or eas.json production profile env (prod release).
+const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+if (!apiUrl) {
+  throw new Error(
+    '[Spendly] EXPO_PUBLIC_API_URL is not set. ' +
+    'Create a .env file at the project root: EXPO_PUBLIC_API_URL=https://your-ngrok-url.ngrok-free.app'
+  );
+}
+export const API_BASE = apiUrl;
 
 export interface ApiError {
   status: number;

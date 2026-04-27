@@ -1,0 +1,29 @@
+{
+  "cli": {
+    "version": ">= 12.0.0"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://ebaf-49-205-200-47.ngrok-free.app"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://ebaf-49-205-200-47.ngrok-free.app"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://spendlyapi.subhamsingh.in"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
