@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -11,8 +11,9 @@ import {
 import { DollarSign, TrendingUp, Wallet, Percent, AlertCircle } from 'lucide-react-native';
 import { useSummary } from '../hooks/useSummary';
 import { useRecentTransactions, RecentTransaction } from '../hooks/useRecentTransactions';
-import { formatCurrency, formatPercentage, formatShortDate } from '../lib/formatters';
-import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../constants/theme';
+import { usePreferences } from '../context/PreferencesContext';
+import { formatPercentage, formatShortDate } from '../lib/formatters';
+import { Colors, spacing, radius, fontSize, fontWeight, shadow } from '../constants/theme';
 
 // ─── Metric Card ─────────────────────────────────────────────────────────────
 function MetricCard({
@@ -26,10 +27,12 @@ function MetricCard({
   trend?: 'up' | 'down' | 'neutral';
   icon: any;
 }) {
+  const { colors, formatAmount } = usePreferences();
   const isPositive = trend === 'up';
   const isNeutral = trend === 'neutral';
   const bgColor = isPositive ? colors.primaryLight : isNeutral ? colors.border : colors.redLight;
   const iconColor = isPositive ? colors.primary : isNeutral ? colors.textSecondary : colors.red;
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   return (
     <View style={[styles.metricCard, shadow.sm]}>
@@ -40,7 +43,7 @@ function MetricCard({
       </View>
       <Text style={styles.metricLabel}>{label}</Text>
       <Text style={styles.metricValue}>
-        {label.includes('Rate') ? formatPercentage(value) : formatCurrency(value)}
+        {label.includes('Rate') ? formatPercentage(value) : formatAmount(value)}
       </Text>
     </View>
   );
@@ -48,10 +51,19 @@ function MetricCard({
 
 // ─── Skeleton ────────────────────────────────────────────────────────────────
 function Skeleton({ height = 60, style }: { height?: number; style?: object }) {
-  return <View style={[styles.skeleton, { height }, style]} />;
+  const { colors } = usePreferences();
+  return (
+    <View
+      style={[
+        { flex: 1, minWidth: '47%', borderRadius: radius.lg, height },
+        { backgroundColor: colors.border },
+        style,
+      ]}
+    />
+  );
 }
 
-// ─── Category icon map (backend categories → emoji) ──────────────────────────
+// ─── Category icon map ────────────────────────────────────────────────────────
 const CATEGORY_ICONS: Record<string, string> = {
   food: '🍽️',
   shopping: '🛍️',
@@ -66,6 +78,8 @@ const CATEGORY_ICONS: Record<string, string> = {
 
 // ─── Transaction Item ────────────────────────────────────────────────────────
 function TransactionItem({ transaction }: { transaction: RecentTransaction }) {
+  const { colors, formatAmount } = usePreferences();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const isIncome = transaction.transactionType === 'credit';
   const icon = transaction.category ? (CATEGORY_ICONS[transaction.category] ?? '💳') : '💳';
 
@@ -82,7 +96,7 @@ function TransactionItem({ transaction }: { transaction: RecentTransaction }) {
       </View>
       <View style={styles.txRight}>
         <Text style={[styles.txAmount, isIncome && styles.txIncome]}>
-          {isIncome ? '+' : '-'}{formatCurrency(transaction.amount)}
+          {isIncome ? '+' : '-'}{formatAmount(transaction.amount)}
         </Text>
         {transaction.category && (
           <Text style={styles.txCategory}>
@@ -96,6 +110,8 @@ function TransactionItem({ transaction }: { transaction: RecentTransaction }) {
 
 // ─── Error Card ──────────────────────────────────────────────────────────────
 function ErrorCard({ onRetry }: { onRetry: () => void }) {
+  const { colors } = usePreferences();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
     <View style={[styles.errorCard, shadow.sm]}>
       <AlertCircle size={20} color={colors.red} />
@@ -109,6 +125,9 @@ function ErrorCard({ onRetry }: { onRetry: () => void }) {
 
 // ─── Dashboard Screen ────────────────────────────────────────────────────────
 export default function DashboardScreen() {
+  const { colors, formatAmount } = usePreferences();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
   const { data: summary, isLoading, isError, refetch: refetchSummary } = useSummary('month');
   const { data: recentTxs, isLoading: txLoading, refetch: refetchTxs } = useRecentTransactions(10);
 
@@ -166,16 +185,8 @@ export default function DashboardScreen() {
           </View>
         ) : !isError && summary ? (
           <View style={styles.metricsGrid}>
-            <MetricCard
-              label="Total Expenses"
-              value={summary.totalExpense}
-              icon={DollarSign}
-            />
-            <MetricCard
-              label="Total Income"
-              value={summary.totalIncome}
-              icon={TrendingUp}
-            />
+            <MetricCard label="Total Expenses" value={summary.totalExpense} icon={DollarSign} />
+            <MetricCard label="Total Income" value={summary.totalIncome} icon={TrendingUp} />
             <MetricCard
               label="Net Savings"
               value={summary.totalSavings}
@@ -201,7 +212,7 @@ export default function DashboardScreen() {
                   summary.maxSpentCategory.category.slice(1)}
               </Text>
               <Text style={styles.topSpendAmount}>
-                {formatCurrency(summary.maxSpentCategory.amount)}
+                {formatAmount(summary.maxSpentCategory.amount)}
               </Text>
             </View>
           </View>
@@ -235,127 +246,119 @@ export default function DashboardScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  scroll: { flex: 1 },
-  scrollContent: { padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
+// ─── Styles ───────────────────────────────────────────────────────────────────
+function makeStyles(colors: Colors) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    scroll: { flex: 1 },
+    scrollContent: { padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
 
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  greeting: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
-  subtitle: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
-  avatarCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.full,
-    backgroundColor: colors.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.primary },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: spacing.sm,
+    },
+    greeting: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
+    subtitle: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
+    avatarCircle: {
+      width: 40,
+      height: 40,
+      borderRadius: radius.full,
+      backgroundColor: colors.primaryLight,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    avatarText: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.primary },
 
-  errorCard: {
-    backgroundColor: colors.redLight,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  errorText: { flex: 1, fontSize: fontSize.sm, color: colors.red, fontWeight: fontWeight.medium },
-  retryBtn: {
-    backgroundColor: colors.red,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
-  },
-  retryText: { color: '#fff', fontSize: fontSize.sm, fontWeight: fontWeight.semibold },
+    errorCard: {
+      backgroundColor: colors.redLight,
+      borderRadius: radius.lg,
+      padding: spacing.md,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+    },
+    errorText: { flex: 1, fontSize: fontSize.sm, color: colors.red, fontWeight: fontWeight.medium },
+    retryBtn: {
+      backgroundColor: colors.red,
+      borderRadius: radius.sm,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.xs + 2,
+    },
+    retryText: { color: '#fff', fontSize: fontSize.sm, fontWeight: fontWeight.semibold },
 
-  sectionTitle: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.semibold,
-    color: colors.text,
-    marginBottom: -spacing.xs,
-  },
-  metricsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  metricCard: {
-    flex: 1,
-    minWidth: '47%',
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    gap: spacing.xs,
-  },
-  metricTop: { marginBottom: spacing.xs },
-  metricIconBg: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  metricLabel: { fontSize: fontSize.xs, color: colors.textSecondary, fontWeight: fontWeight.medium },
-  metricValue: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text },
+    sectionTitle: {
+      fontSize: fontSize.lg,
+      fontWeight: fontWeight.semibold,
+      color: colors.text,
+      marginBottom: -spacing.xs,
+    },
+    metricsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+    metricCard: {
+      flex: 1,
+      minWidth: '47%',
+      backgroundColor: colors.surface,
+      borderRadius: radius.lg,
+      padding: spacing.md,
+      gap: spacing.xs,
+    },
+    metricTop: { marginBottom: spacing.xs },
+    metricIconBg: {
+      width: 40,
+      height: 40,
+      borderRadius: radius.md,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    metricLabel: { fontSize: fontSize.xs, color: colors.textSecondary, fontWeight: fontWeight.medium },
+    metricValue: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text },
 
-  topSpendBadge: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  topSpendLabel: { fontSize: fontSize.sm, color: colors.textSecondary, fontWeight: fontWeight.medium },
-  topSpendRight: { alignItems: 'flex-end' },
-  topSpendCategory: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.text },
-  topSpendAmount: { fontSize: fontSize.xs, color: colors.primary, fontWeight: fontWeight.semibold },
+    topSpendBadge: {
+      backgroundColor: colors.surface,
+      borderRadius: radius.lg,
+      padding: spacing.md,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    topSpendLabel: { fontSize: fontSize.sm, color: colors.textSecondary, fontWeight: fontWeight.medium },
+    topSpendRight: { alignItems: 'flex-end' },
+    topSpendCategory: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.text },
+    topSpendAmount: { fontSize: fontSize.xs, color: colors.primary, fontWeight: fontWeight.semibold },
 
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-  },
-  cardTitle: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.semibold,
-    color: colors.text,
-    marginBottom: spacing.md,
-  },
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: radius.lg,
+      padding: spacing.md,
+    },
+    cardTitle: {
+      fontSize: fontSize.lg,
+      fontWeight: fontWeight.semibold,
+      color: colors.text,
+      marginBottom: spacing.md,
+    },
 
-  txItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: spacing.sm + 2,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  txLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flex: 1 },
-  txIcon: { fontSize: 24 },
-  txMerchant: { fontSize: fontSize.sm, fontWeight: fontWeight.medium, color: colors.text },
-  txDate: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: 2 },
-  txRight: { alignItems: 'flex-end' },
-  txAmount: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text },
-  txIncome: { color: colors.income },
-  txCategory: { fontSize: fontSize.xs, color: colors.textMuted, marginTop: 2 },
+    txItem: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: spacing.sm + 2,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    txLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flex: 1 },
+    txIcon: { fontSize: 24 },
+    txMerchant: { fontSize: fontSize.sm, fontWeight: fontWeight.medium, color: colors.text },
+    txDate: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: 2 },
+    txRight: { alignItems: 'flex-end' },
+    txAmount: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text },
+    txIncome: { color: colors.income },
+    txCategory: { fontSize: fontSize.xs, color: colors.textMuted, marginTop: 2 },
 
-  emptyTx: { alignItems: 'center', paddingVertical: spacing.xl },
-  emptyTxIcon: { fontSize: 36, marginBottom: spacing.sm },
-  emptyTxText: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text },
-  emptyTxSub: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: 4, textAlign: 'center' },
-
-  skeleton: {
-    flex: 1,
-    minWidth: '47%',
-    backgroundColor: '#E5E7EB',
-    borderRadius: radius.lg,
-  },
-});
+    emptyTx: { alignItems: 'center', paddingVertical: spacing.xl },
+    emptyTxIcon: { fontSize: 36, marginBottom: spacing.sm },
+    emptyTxText: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text },
+    emptyTxSub: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: 4, textAlign: 'center' },
+  });
+}

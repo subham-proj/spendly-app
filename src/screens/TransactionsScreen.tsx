@@ -11,13 +11,17 @@ import {
 import { Search } from 'lucide-react-native';
 import { useExpenseData } from '../hooks/useExpenseData';
 import { getCategoryById, CATEGORIES } from '../lib/mockData';
-import { formatCurrency, formatShortDate } from '../lib/formatters';
-import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../constants/theme';
+import { usePreferences } from '../context/PreferencesContext';
+import { formatShortDate } from '../lib/formatters';
+import { Colors, spacing, radius, fontSize, fontWeight, shadow } from '../constants/theme';
 
 const FILTERS = ['All', 'Expenses', 'Income', 'Recurring'];
 
 export default function TransactionsScreen() {
-  const { data, isLoading } = useExpenseData();
+  const { colors, formatAmount } = usePreferences();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
+  const { data } = useExpenseData();
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -56,7 +60,7 @@ export default function TransactionsScreen() {
         </View>
         <View style={styles.txRight}>
           <Text style={[styles.txAmount, isIncome && styles.txIncome]}>
-            {isIncome ? '+' : '-'}{formatCurrency(item.amount)}
+            {isIncome ? '+' : '-'}{formatAmount(item.amount)}
           </Text>
           {item.isRecurring && <Text style={styles.recurring}>Recurring</Text>}
         </View>
@@ -135,97 +139,99 @@ export default function TransactionsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+function makeStyles(colors: Colors) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
 
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    marginHorizontal: spacing.md,
-    marginTop: spacing.md,
-    marginBottom: spacing.sm,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    gap: spacing.sm,
-    ...shadow.sm,
-  },
-  searchInput: {
-    flex: 1,
-    paddingVertical: spacing.sm + 2,
-    fontSize: fontSize.md,
-    color: colors.text,
-  },
+    searchBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      marginHorizontal: spacing.md,
+      marginTop: spacing.md,
+      marginBottom: spacing.sm,
+      borderRadius: radius.md,
+      paddingHorizontal: spacing.md,
+      gap: spacing.sm,
+      ...shadow.sm,
+    },
+    searchInput: {
+      flex: 1,
+      paddingVertical: spacing.sm + 2,
+      fontSize: fontSize.md,
+      color: colors.text,
+    },
 
-  filterRow: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing.md,
-    gap: spacing.sm,
-    marginBottom: spacing.sm,
-  },
-  filterChip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
-    borderRadius: radius.full,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  filterChipActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  filterText: { fontSize: fontSize.sm, color: colors.textSecondary, fontWeight: fontWeight.medium },
-  filterTextActive: { color: '#fff' },
+    filterRow: {
+      flexDirection: 'row',
+      paddingHorizontal: spacing.md,
+      gap: spacing.sm,
+      marginBottom: spacing.sm,
+    },
+    filterChip: {
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.xs + 2,
+      borderRadius: radius.full,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    filterChipActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    filterText: { fontSize: fontSize.sm, color: colors.textSecondary, fontWeight: fontWeight.medium },
+    filterTextActive: { color: '#fff' },
 
-  categoryList: { paddingHorizontal: spacing.md, gap: spacing.sm, marginBottom: spacing.sm },
-  categoryChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingHorizontal: spacing.sm + 2,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.full,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  categoryText: { fontSize: fontSize.xs, color: colors.textSecondary, fontWeight: fontWeight.medium },
+    categoryList: { paddingHorizontal: spacing.md, gap: spacing.sm, marginBottom: spacing.sm },
+    categoryChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      paddingHorizontal: spacing.sm + 2,
+      paddingVertical: spacing.xs,
+      borderRadius: radius.full,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    categoryText: { fontSize: fontSize.xs, color: colors.textSecondary, fontWeight: fontWeight.medium },
 
-  count: {
-    paddingHorizontal: spacing.md,
-    marginBottom: spacing.sm,
-    fontSize: fontSize.xs,
-    color: colors.textMuted,
-  },
+    count: {
+      paddingHorizontal: spacing.md,
+      marginBottom: spacing.sm,
+      fontSize: fontSize.xs,
+      color: colors.textMuted,
+    },
 
-  listContent: { paddingHorizontal: spacing.md, paddingBottom: spacing.xxl, gap: spacing.sm },
-  txCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  txLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flex: 1 },
-  txIconBg: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  txIcon: { fontSize: 22 },
-  txMerchant: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text },
-  txCategory: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: 1 },
-  txDate: { fontSize: fontSize.xs, color: colors.textMuted, marginTop: 1 },
-  txRight: { alignItems: 'flex-end' },
-  txAmount: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.text },
-  txIncome: { color: colors.income },
-  recurring: { fontSize: fontSize.xs, color: colors.amber, fontWeight: fontWeight.medium, marginTop: 2 },
+    listContent: { paddingHorizontal: spacing.md, paddingBottom: spacing.xxl, gap: spacing.sm },
+    txCard: {
+      backgroundColor: colors.surface,
+      borderRadius: radius.lg,
+      padding: spacing.md,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    txLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flex: 1 },
+    txIconBg: {
+      width: 44,
+      height: 44,
+      borderRadius: radius.md,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    txIcon: { fontSize: 22 },
+    txMerchant: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text },
+    txCategory: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: 1 },
+    txDate: { fontSize: fontSize.xs, color: colors.textMuted, marginTop: 1 },
+    txRight: { alignItems: 'flex-end' },
+    txAmount: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.text },
+    txIncome: { color: colors.income },
+    recurring: { fontSize: fontSize.xs, color: colors.amber, fontWeight: fontWeight.medium, marginTop: 2 },
 
-  empty: { alignItems: 'center', paddingTop: spacing.xxl },
-  emptyIcon: { fontSize: 40, marginBottom: spacing.sm },
-  emptyText: { fontSize: fontSize.md, color: colors.textSecondary },
-});
+    empty: { alignItems: 'center', paddingTop: spacing.xxl },
+    emptyIcon: { fontSize: 40, marginBottom: spacing.sm },
+    emptyText: { fontSize: fontSize.md, color: colors.textSecondary },
+  });
+}

@@ -1,10 +1,13 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, SafeAreaView } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-import { colors, spacing, radius, fontSize, fontWeight } from '../constants/theme';
+import { usePreferences } from '../context/PreferencesContext';
+import { Colors, spacing, radius, fontSize, fontWeight } from '../constants/theme';
 
 export default function LoginScreen() {
   const { signInWithGoogle, isLoading } = useAuth();
+  const { colors } = usePreferences();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [signing, setSigning] = React.useState(false);
 
   const handleSignIn = async () => {
@@ -75,96 +78,70 @@ export default function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.background,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: spacing.lg,
-    justifyContent: 'center',
-    gap: spacing.xl,
-  },
-  brand: {
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  logoCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: radius.xl,
-    backgroundColor: colors.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  logoEmoji: {
-    fontSize: 40,
-  },
-  appName: {
-    fontSize: 36,
-    fontWeight: fontWeight.bold,
-    color: colors.text,
-    letterSpacing: -0.5,
-  },
-  tagline: {
-    fontSize: fontSize.md,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  features: {
-    gap: spacing.md,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-  },
-  featureRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  featureIcon: {
-    fontSize: 22,
-  },
-  featureText: {
-    fontSize: fontSize.md,
-    color: colors.text,
-    fontWeight: fontWeight.medium,
-  },
-  button: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.md,
-    paddingVertical: spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-  },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  googleIcon: {
-    color: '#fff',
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.bold,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.semibold,
-  },
-  disclaimer: {
-    fontSize: fontSize.xs,
-    color: colors.textMuted,
-    textAlign: 'center',
-    lineHeight: 16,
-  },
-});
+function makeStyles(colors: Colors) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    center: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.background,
+    },
+    content: {
+      flex: 1,
+      paddingHorizontal: spacing.lg,
+      justifyContent: 'center',
+      gap: spacing.xl,
+    },
+    brand: { alignItems: 'center', gap: spacing.sm },
+    logoCircle: {
+      width: 80,
+      height: 80,
+      borderRadius: radius.xl,
+      backgroundColor: colors.primaryLight,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: spacing.sm,
+    },
+    logoEmoji: { fontSize: 40 },
+    appName: {
+      fontSize: 36,
+      fontWeight: fontWeight.bold,
+      color: colors.text,
+      letterSpacing: -0.5,
+    },
+    tagline: {
+      fontSize: fontSize.md,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: 22,
+    },
+    features: {
+      gap: spacing.md,
+      backgroundColor: colors.surface,
+      borderRadius: radius.lg,
+      padding: spacing.lg,
+    },
+    featureRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+    featureIcon: { fontSize: 22 },
+    featureText: { fontSize: fontSize.md, color: colors.text, fontWeight: fontWeight.medium },
+    button: {
+      backgroundColor: colors.primary,
+      borderRadius: radius.md,
+      paddingVertical: spacing.md,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.sm,
+    },
+    buttonDisabled: { opacity: 0.7 },
+    googleIcon: { color: '#fff', fontSize: fontSize.lg, fontWeight: fontWeight.bold },
+    buttonText: { color: '#fff', fontSize: fontSize.lg, fontWeight: fontWeight.semibold },
+    disclaimer: {
+      fontSize: fontSize.xs,
+      color: colors.textMuted,
+      textAlign: 'center',
+      lineHeight: 16,
+    },
+  });
+}

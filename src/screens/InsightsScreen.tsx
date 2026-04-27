@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,10 +9,13 @@ import {
 import { useExpenseData } from '../hooks/useExpenseData';
 import { useMetrics } from '../hooks/useMetrics';
 import { CATEGORIES, calculateCategoryTotal } from '../lib/mockData';
-import { formatCurrency, formatPercentage } from '../lib/formatters';
-import { colors, spacing, radius, fontSize, fontWeight, shadow } from '../constants/theme';
+import { usePreferences } from '../context/PreferencesContext';
+import { formatPercentage } from '../lib/formatters';
+import { Colors, spacing, radius, fontSize, fontWeight, shadow } from '../constants/theme';
 
 function CategoryBar({ category, total, max }: { category: any; total: number; max: number }) {
+  const { colors, formatAmount } = usePreferences();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const pct = max > 0 ? total / max : 0;
   const overBudget = total > category.budget;
 
@@ -25,9 +28,9 @@ function CategoryBar({ category, total, max }: { category: any; total: number; m
         </View>
         <View style={styles.categoryRight}>
           <Text style={[styles.categoryAmount, overBudget && { color: colors.red }]}>
-            {formatCurrency(total)}
+            {formatAmount(total)}
           </Text>
-          <Text style={styles.categoryBudget}>of {formatCurrency(category.budget)}</Text>
+          <Text style={styles.categoryBudget}>of {formatAmount(category.budget)}</Text>
         </View>
       </View>
       <View style={styles.barBg}>
@@ -43,14 +46,21 @@ function CategoryBar({ category, total, max }: { category: any; total: number; m
       </View>
       {overBudget && (
         <Text style={styles.overBudget}>
-          Over budget by {formatCurrency(total - category.budget)}
+          Over budget by {formatAmount(total - category.budget)}
         </Text>
       )}
     </View>
   );
 }
 
-function InsightCard({ emoji, title, description, accent }: { emoji: string; title: string; description: string; accent: string }) {
+function InsightCard({ emoji, title, description, accent }: {
+  emoji: string;
+  title: string;
+  description: string;
+  accent: string;
+}) {
+  const { colors } = usePreferences();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
     <View style={[styles.insightCard, { borderLeftColor: accent }, shadow.sm]}>
       <Text style={styles.insightEmoji}>{emoji}</Text>
@@ -63,6 +73,9 @@ function InsightCard({ emoji, title, description, accent }: { emoji: string; tit
 }
 
 export default function InsightsScreen() {
+  const { colors, formatAmount } = usePreferences();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
   const { data, isLoading } = useExpenseData();
   const metrics = useMetrics(data?.transactions);
   const transactions = data?.transactions ?? [];
@@ -91,7 +104,7 @@ export default function InsightsScreen() {
           <View style={[styles.summaryCard, shadow.sm]}>
             <Text style={styles.summaryLabel}>Net Savings</Text>
             <Text style={[styles.summaryValue, { color: metrics.netSavings.value >= 0 ? colors.primary : colors.red }]}>
-              {formatCurrency(metrics.netSavings.value)}
+              {formatAmount(metrics.netSavings.value)}
             </Text>
           </View>
         </View>
@@ -103,7 +116,7 @@ export default function InsightsScreen() {
             <InsightCard
               emoji="🏆"
               title={`Top Spend: ${topCategory.name}`}
-              description={`You've spent ${formatCurrency(topCategory.total)} this month on ${topCategory.name}.`}
+              description={`You've spent ${formatAmount(topCategory.total)} this month on ${topCategory.name}.`}
               accent={topCategory.color}
             />
           )}
@@ -138,7 +151,7 @@ export default function InsightsScreen() {
         <View style={[styles.card, shadow.sm]}>
           {isLoading
             ? Array.from({ length: 5 }).map((_, i) => (
-                <View key={i} style={styles.skeleton} />
+                <View key={i} style={[styles.skeleton, { backgroundColor: colors.border }]} />
               ))
             : categoryTotals.map((cat) => (
                 <CategoryBar key={cat.id} category={cat} total={cat.total} max={maxTotal} />
@@ -149,66 +162,68 @@ export default function InsightsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
+function makeStyles(colors: Colors) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    content: { padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
 
-  summaryRow: { flexDirection: 'row', gap: spacing.sm },
-  summaryCard: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  summaryLabel: { fontSize: fontSize.sm, color: colors.textSecondary, fontWeight: fontWeight.medium },
-  summaryValue: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold },
+    summaryRow: { flexDirection: 'row', gap: spacing.sm },
+    summaryCard: {
+      flex: 1,
+      backgroundColor: colors.surface,
+      borderRadius: radius.lg,
+      padding: spacing.md,
+      alignItems: 'center',
+      gap: spacing.xs,
+    },
+    summaryLabel: { fontSize: fontSize.sm, color: colors.textSecondary, fontWeight: fontWeight.medium },
+    summaryValue: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold },
 
-  sectionTitle: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.semibold,
-    color: colors.text,
-    marginTop: spacing.xs,
-  },
+    sectionTitle: {
+      fontSize: fontSize.lg,
+      fontWeight: fontWeight.semibold,
+      color: colors.text,
+      marginTop: spacing.xs,
+    },
 
-  insightsList: { gap: spacing.sm },
-  insightCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.sm,
-    borderLeftWidth: 4,
-  },
-  insightEmoji: { fontSize: 22, marginTop: 1 },
-  insightTitle: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text },
-  insightDesc: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: 2, lineHeight: 16 },
+    insightsList: { gap: spacing.sm },
+    insightCard: {
+      backgroundColor: colors.surface,
+      borderRadius: radius.md,
+      padding: spacing.md,
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: spacing.sm,
+      borderLeftWidth: 4,
+    },
+    insightEmoji: { fontSize: 22, marginTop: 1 },
+    insightTitle: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text },
+    insightDesc: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: 2, lineHeight: 16 },
 
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    gap: spacing.md,
-  },
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: radius.lg,
+      padding: spacing.md,
+      gap: spacing.md,
+    },
 
-  categoryRow: { gap: spacing.xs },
-  categoryHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  categoryLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  categoryIcon: { fontSize: 18 },
-  categoryName: { fontSize: fontSize.sm, fontWeight: fontWeight.medium, color: colors.text },
-  categoryRight: { alignItems: 'flex-end' },
-  categoryAmount: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.text },
-  categoryBudget: { fontSize: fontSize.xs, color: colors.textMuted },
-  barBg: {
-    height: 8,
-    backgroundColor: colors.border,
-    borderRadius: radius.full,
-    overflow: 'hidden',
-  },
-  barFill: { height: '100%', borderRadius: radius.full },
-  overBudget: { fontSize: fontSize.xs, color: colors.red, fontWeight: fontWeight.medium },
+    categoryRow: { gap: spacing.xs },
+    categoryHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    categoryLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+    categoryIcon: { fontSize: 18 },
+    categoryName: { fontSize: fontSize.sm, fontWeight: fontWeight.medium, color: colors.text },
+    categoryRight: { alignItems: 'flex-end' },
+    categoryAmount: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.text },
+    categoryBudget: { fontSize: fontSize.xs, color: colors.textMuted },
+    barBg: {
+      height: 8,
+      backgroundColor: colors.border,
+      borderRadius: radius.full,
+      overflow: 'hidden',
+    },
+    barFill: { height: '100%', borderRadius: radius.full },
+    overBudget: { fontSize: fontSize.xs, color: colors.red, fontWeight: fontWeight.medium },
 
-  skeleton: { height: 48, backgroundColor: '#E5E7EB', borderRadius: radius.md },
-});
+    skeleton: { height: 48, borderRadius: radius.md },
+  });
+}
