@@ -324,7 +324,7 @@ function makeStyles(colors: Colors) {
     header: {
       paddingHorizontal: spacing.md,
       paddingTop: spacing.sm,
-      paddingBottom: spacing.xs,
+      paddingBottom: spacing.sm,
       gap: spacing.sm,
     },
     screenTitle: {
@@ -337,8 +337,8 @@ function makeStyles(colors: Colors) {
       gap: spacing.xs,
     },
     sortChip: {
-      paddingHorizontal: spacing.sm + 2,
-      paddingVertical: spacing.xs,
+      paddingHorizontal: spacing.sm + 4,
+      paddingVertical: spacing.xs + 2,
       borderRadius: radius.full,
       backgroundColor: colors.surface,
       borderWidth: 1,
@@ -349,7 +349,7 @@ function makeStyles(colors: Colors) {
       borderColor: colors.primary,
     },
     sortChipText: {
-      fontSize: fontSize.xs,
+      fontSize: fontSize.sm,
       fontWeight: fontWeight.medium,
       color: colors.textSecondary,
     },
@@ -372,7 +372,7 @@ function makeStyles(colors: Colors) {
     },
     searchInput: {
       flex: 1,
-      paddingVertical: spacing.sm + 2,
+      paddingVertical: spacing.md,
       fontSize: fontSize.sm,
       color: colors.text,
     },
@@ -382,11 +382,11 @@ function makeStyles(colors: Colors) {
       flexDirection: 'row',
       paddingHorizontal: spacing.md,
       gap: spacing.sm,
-      marginBottom: spacing.xs,
+      marginBottom: spacing.sm,
     },
     typeChip: {
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.xs + 2,
+      paddingHorizontal: spacing.md + 2,
+      paddingVertical: spacing.sm,
       borderRadius: radius.full,
       backgroundColor: colors.surface,
       borderWidth: 1,
@@ -406,7 +406,7 @@ function makeStyles(colors: Colors) {
     // Category chips
     categoryListWrapper: {
       flexGrow: 0,
-      marginBottom: spacing.xs,
+      marginBottom: spacing.sm,
     },
     categoryList: {
       paddingHorizontal: spacing.md,
@@ -417,20 +417,20 @@ function makeStyles(colors: Colors) {
     categoryChip: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 4,
-      height: 28,
-      paddingHorizontal: spacing.sm + 2,
+      gap: 5,
+      height: 34,
+      paddingHorizontal: spacing.sm + 4,
       borderRadius: radius.full,
       backgroundColor: colors.surface,
       borderWidth: 1,
       borderColor: colors.border,
     },
-    categoryIcon: { fontSize: 12, lineHeight: 16 },
+    categoryIcon: { fontSize: 14, lineHeight: 18 },
     categoryText: {
-      fontSize: fontSize.xs,
+      fontSize: fontSize.sm,
       color: colors.textSecondary,
       fontWeight: fontWeight.medium,
-      lineHeight: 16,
+      lineHeight: 18,
     },
 
     // Count badge
