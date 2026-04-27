@@ -17,7 +17,7 @@ import { useDailyExpenses, DailyExpense } from "../hooks/useDailyExpenses";
 import { useInsights, AiInsight } from "../hooks/useInsights";
 import { getCategoryById } from "../lib/categories";
 import { usePreferences } from "../context/PreferencesContext";
-import { formatShortDate, formatPercentage } from "../lib/formatters";
+import { formatShortDate } from "../lib/formatters";
 import {
   Colors,
   spacing,
@@ -221,6 +221,26 @@ function CategoryBar({
   );
 }
 
+// ─── Error Row ────────────────────────────────────────────────────────────────
+function ErrorRow({
+  label,
+  onRetry,
+  styles,
+}: {
+  label: string;
+  onRetry: () => void;
+  styles: ReturnType<typeof makeStyles>;
+}) {
+  return (
+    <View style={styles.errorRow}>
+      <Text style={styles.errorText}>Could not load {label}</Text>
+      <TouchableOpacity onPress={onRetry} style={styles.retryBtn}>
+        <Text style={styles.retryText}>Retry</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 // ─── Insights Screen ──────────────────────────────────────────────────────────
 export default function InsightsScreen() {
   const { colors, formatAmount } = usePreferences();
@@ -232,21 +252,25 @@ export default function InsightsScreen() {
   const {
     data: summary,
     isLoading: summaryLoading,
+    isError: summaryError,
     refetch: refetchSummary,
   } = useSummary(period);
   const {
     data: catData,
     isLoading: catLoading,
+    isError: catError,
     refetch: refetchCat,
   } = useCategoryExpenses(period);
   const {
     data: daily,
     isLoading: dailyLoading,
+    isError: dailyError,
     refetch: refetchDaily,
   } = useDailyExpenses();
   const {
     data: aiData,
     isLoading: insightsLoading,
+    isError: insightsError,
     refetch: refetchInsights,
   } = useInsights(period);
 
@@ -314,14 +338,11 @@ export default function InsightsScreen() {
         {summaryLoading ? (
           <View style={styles.summaryRow}>
             {[1, 2, 3].map((i) => (
-              <Skeleton
-                key={i}
-                colors={colors}
-                height={72}
-                borderRadius={radius.lg}
-              />
+              <Skeleton key={i} colors={colors} height={72} borderRadius={radius.lg} />
             ))}
           </View>
+        ) : summaryError ? (
+          <ErrorRow label="summary" onRetry={refetchSummary} styles={styles} />
         ) : (
           <View style={styles.summaryRow}>
             <SummaryCard
@@ -353,12 +374,10 @@ export default function InsightsScreen() {
         <View style={[styles.card, shadow.sm]}>
           {dailyLoading ? (
             <Skeleton colors={colors} height={80} borderRadius={radius.sm} />
+          ) : dailyError ? (
+            <ErrorRow label="trend" onRetry={refetchDaily} styles={styles} />
           ) : (
-            <SpendingChart
-              data={dailyData}
-              colors={colors}
-              formatAmount={formatAmount}
-            />
+            <SpendingChart data={dailyData} colors={colors} formatAmount={formatAmount} />
           )}
         </View>
 
@@ -372,6 +391,8 @@ export default function InsightsScreen() {
               <Skeleton key={i} colors={colors} height={68} />
             ))}
           </View>
+        ) : insightsError ? (
+          <ErrorRow label="insights" onRetry={refetchInsights} styles={styles} />
         ) : insights.length === 0 ? (
           <View style={[styles.card, shadow.sm]}>
             <Text style={styles.emptyText}>
@@ -402,6 +423,8 @@ export default function InsightsScreen() {
                 <Skeleton key={i} colors={colors} height={48} />
               ))}
             </View>
+          ) : catError ? (
+            <ErrorRow label="categories" onRetry={refetchCat} styles={styles} />
           ) : categories.length === 0 ? (
             <Text style={styles.emptyText}>
               No expense data for this period.
@@ -575,6 +598,29 @@ function makeStyles(colors: Colors) {
       color: colors.textSecondary,
       textAlign: "center",
       paddingVertical: spacing.sm,
+    },
+
+    // Error
+    errorRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingVertical: spacing.sm,
+    },
+    errorText: {
+      fontSize: fontSize.sm,
+      color: colors.textSecondary,
+    },
+    retryBtn: {
+      backgroundColor: colors.primary,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.xs + 2,
+      borderRadius: radius.full,
+    },
+    retryText: {
+      fontSize: fontSize.xs,
+      fontWeight: fontWeight.semibold,
+      color: "#fff",
     },
   });
 }
