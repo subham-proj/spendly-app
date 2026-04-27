@@ -54,10 +54,12 @@ function TransactionCard({
       </View>
       <View style={styles.txBody}>
         <Text style={styles.txMerchant} numberOfLines={1}>
-          {item.merchant ?? item.subject ?? 'Transaction'}
+          {item.merchant ?? cat?.name ?? 'Transaction'}
         </Text>
         <Text style={styles.txMeta}>
-          {cat?.name ?? item.category ?? 'Other'} · {formatShortDate(item.emailDate)}
+          {item.merchant
+            ? `${cat?.name ?? item.category ?? 'Other'} · ${formatShortDate(item.emailDate)}`
+            : formatShortDate(item.emailDate)}
         </Text>
       </View>
       <Text style={[styles.txAmount, isCredit && { color: colors.income }]}>
@@ -256,6 +258,7 @@ export default function TransactionsScreen() {
         showsHorizontalScrollIndicator={false}
         data={TRANSACTION_CATEGORIES}
         keyExtractor={(c) => c.id}
+        style={styles.categoryListWrapper}
         contentContainerStyle={styles.categoryList}
         renderItem={({ item }) => {
           const active = activeCategory === item.id;
@@ -379,7 +382,7 @@ function makeStyles(colors: Colors) {
       flexDirection: 'row',
       paddingHorizontal: spacing.md,
       gap: spacing.sm,
-      marginBottom: spacing.sm,
+      marginBottom: spacing.xs,
     },
     typeChip: {
       paddingHorizontal: spacing.md,
@@ -401,28 +404,33 @@ function makeStyles(colors: Colors) {
     typeChipTextActive: { color: '#fff' },
 
     // Category chips
+    categoryListWrapper: {
+      flexGrow: 0,
+      marginBottom: spacing.xs,
+    },
     categoryList: {
       paddingHorizontal: spacing.md,
+      paddingVertical: spacing.xs,
       gap: spacing.sm,
-      marginBottom: spacing.xs,
-      paddingBottom: spacing.xs,
+      alignItems: 'center',
     },
     categoryChip: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: spacing.xs,
+      gap: 4,
+      height: 28,
       paddingHorizontal: spacing.sm + 2,
-      paddingVertical: spacing.xs,
       borderRadius: radius.full,
       backgroundColor: colors.surface,
       borderWidth: 1,
       borderColor: colors.border,
     },
-    categoryIcon: { fontSize: 13 },
+    categoryIcon: { fontSize: 12, lineHeight: 16 },
     categoryText: {
       fontSize: fontSize.xs,
       color: colors.textSecondary,
       fontWeight: fontWeight.medium,
+      lineHeight: 16,
     },
 
     // Count badge
