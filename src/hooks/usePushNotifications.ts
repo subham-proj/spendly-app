@@ -4,6 +4,7 @@ import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { apiFetch } from '../lib/api';
+import { API_ROUTES } from '../constants/api';
 
 // Show alerts and play sound when a push arrives while the app is foregrounded
 Notifications.setNotificationHandler({
@@ -64,7 +65,7 @@ async function registerAndSendToken(authToken: string) {
     console.log('[Push] Expo push token:', expoPushToken);
 
     // Send token to the backend so the server can send notifications to this device
-    await apiFetch('/api/users/preferences', authToken, {
+    await apiFetch(API_ROUTES.PREFERENCES, authToken, {
       method: 'PATCH',
       body: JSON.stringify({ expoPushToken }),
     });

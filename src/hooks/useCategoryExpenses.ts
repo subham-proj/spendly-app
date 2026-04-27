@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../lib/api';
+import { API_ROUTES, Period } from '../constants/api';
+import { QUERY_KEYS, CACHE } from '../constants/queryKeys';
 
 export interface CategoryExpense {
   category: string;
@@ -15,15 +17,15 @@ export interface CategoryExpensesData {
   categories: CategoryExpense[];
 }
 
-export function useCategoryExpenses(period: 'month' | 'all' = 'month') {
+export function useCategoryExpenses(period: Period = 'month') {
   const { token, signOut } = useAuth();
 
   return useQuery<CategoryExpensesData>({
-    queryKey: ['category-expenses', period],
+    queryKey: QUERY_KEYS.categoryExpenses(period),
     queryFn: async () => {
       try {
         return await apiFetch<CategoryExpensesData>(
-          `/api/analytics/category-expenses?period=${period}`,
+          `${API_ROUTES.CATEGORY_EXPENSES}?period=${period}`,
           token!,
         );
       } catch (err: any) {
@@ -32,7 +34,7 @@ export function useCategoryExpenses(period: 'month' | 'all' = 'month') {
       }
     },
     enabled: !!token,
-    staleTime: 1000 * 60 * 5,
-    gcTime:    1000 * 60 * 10,
+    staleTime: CACHE.STALE_DEFAULT,
+    gcTime:    CACHE.GC_DEFAULT,
   });
 }

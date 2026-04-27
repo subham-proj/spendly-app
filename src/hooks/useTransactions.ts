@@ -1,6 +1,8 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
-import { apiFetch, API_BASE } from '../lib/api';
+import { apiFetch } from '../lib/api';
+import { API_ROUTES } from '../constants/api';
+import { QUERY_KEYS, CACHE } from '../constants/queryKeys';
 
 export type SortOption = '-emailDate' | 'emailDate' | '-amount' | 'amount';
 
@@ -38,7 +40,7 @@ export function useTransactions(filters: TransactionFilters) {
   const { token, signOut } = useAuth();
 
   return useInfiniteQuery<TransactionPage>({
-    queryKey: ['transactions', filters],
+    queryKey: QUERY_KEYS.transactions(filters),
     initialPageParam: 1,
     queryFn: async ({ pageParam }) => {
       const params = new URLSearchParams({
@@ -51,7 +53,7 @@ export function useTransactions(filters: TransactionFilters) {
       if (filters.search)   params.set('search',   filters.search);
 
       try {
-        return await apiFetch<TransactionPage>(`/api/transactions?${params.toString()}`, token!);
+        return await apiFetch<TransactionPage>(`${API_ROUTES.TRANSACTIONS}?${params.toString()}`, token!);
       } catch (err: any) {
         if (err.status === 401) signOut();
         throw err;
@@ -59,7 +61,7 @@ export function useTransactions(filters: TransactionFilters) {
     },
     getNextPageParam: (lastPage) => lastPage.hasNextPage ? lastPage.page + 1 : undefined,
     enabled: !!token,
-    staleTime: 1000 * 60 * 2,   // 2 min
-    gcTime:    1000 * 60 * 10,
+    staleTime: CACHE.STALE_SHORT,
+    gcTime:    CACHE.GC_DEFAULT,
   });
 }

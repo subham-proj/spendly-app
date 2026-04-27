@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../lib/api';
+import { API_ROUTES } from '../constants/api';
+import { QUERY_KEYS, CACHE } from '../constants/queryKeys';
 
 export interface ProfileData {
   email: string;
@@ -20,17 +22,17 @@ export function useProfile() {
   const { token, signOut } = useAuth();
 
   return useQuery<ProfileData>({
-    queryKey: ['profile'],
+    queryKey: QUERY_KEYS.profile(),
     queryFn: async () => {
       try {
-        return await apiFetch<ProfileData>('/api/users/me', token!);
+        return await apiFetch<ProfileData>(API_ROUTES.ME, token!);
       } catch (err: any) {
         if (err.status === 401) signOut();
         throw err;
       }
     },
     enabled: !!token,
-    staleTime: 1000 * 60 * 10,
-    gcTime: 1000 * 60 * 20,
+    staleTime: CACHE.STALE_LONG,
+    gcTime:    CACHE.GC_LONG,
   });
 }

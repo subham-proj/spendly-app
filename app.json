@@ -3,9 +3,12 @@
     "name": "Spendly",
     "slug": "spendly-mobile",
     "version": "1.0.0",
+    "description": "Automatically track your spending from Gmail receipts. Smart insights, beautiful charts.",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#ffffff",
+    "primaryColor": "#10B981",
     "newArchEnabled": true,
     "scheme": "spendly",
     "splash": {
@@ -13,12 +16,21 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "assetBundlePatterns": [
+      "assets/**"
+    ],
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.spendly.app"
+      "bundleIdentifier": "com.spendly.app",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSUserNotificationsUsageDescription": "Spendly sends budget alerts and new transaction notifications.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.spendly.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"

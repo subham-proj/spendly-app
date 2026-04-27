@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../lib/api';
+import { API_ROUTES } from '../constants/api';
+import { QUERY_KEYS, CACHE } from '../constants/queryKeys';
 
 export interface RecentTransaction {
   _id: string;
@@ -21,11 +23,11 @@ export function useRecentTransactions(limit = 10) {
   const { token, signOut } = useAuth();
 
   return useQuery<RecentTransaction[]>({
-    queryKey: ['recent-transactions', limit],
+    queryKey: QUERY_KEYS.recentTransactions(limit),
     queryFn: async () => {
       try {
         const res = await apiFetch<RecentTransactionsResponse>(
-          `/api/analytics/recent-transactions?limit=${limit}`,
+          `${API_ROUTES.RECENT_TRANSACTIONS}?limit=${limit}`,
           token!,
         );
         return res.transactions;
@@ -35,7 +37,7 @@ export function useRecentTransactions(limit = 10) {
       }
     },
     enabled: !!token,
-    staleTime: 1000 * 60 * 5,
-    gcTime: 1000 * 60 * 10,
+    staleTime: CACHE.STALE_DEFAULT,
+    gcTime:    CACHE.GC_DEFAULT,
   });
 }

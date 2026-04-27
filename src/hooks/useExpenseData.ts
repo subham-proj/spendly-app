@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { MOCK_TRANSACTIONS, CATEGORIES } from '../lib/mockData';
+import { QUERY_KEYS, CACHE } from '../constants/queryKeys';
 
 const fetchExpenseData = async () => {
   return new Promise<{ transactions: typeof MOCK_TRANSACTIONS; categories: typeof CATEGORIES }>(
@@ -13,9 +14,9 @@ const fetchExpenseData = async () => {
 
 export function useExpenseData() {
   return useQuery({
-    queryKey: ['expenses'],
+    queryKey: QUERY_KEYS.expenses(),
     queryFn: fetchExpenseData,
-    staleTime: 1000 * 60 * 5,
-    gcTime: 1000 * 60 * 10,
+    staleTime: CACHE.STALE_DEFAULT,
+    gcTime:    CACHE.GC_DEFAULT,
   });
 }

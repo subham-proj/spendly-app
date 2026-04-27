@@ -2,17 +2,20 @@ import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
+  Image,
   ScrollView,
   StyleSheet,
   SafeAreaView,
   TouchableOpacity,
   RefreshControl,
 } from 'react-native';
-import { DollarSign, TrendingUp, Wallet, Percent, AlertCircle } from 'lucide-react-native';
+import { DollarSign, TrendingUp, Wallet, Percent, AlertCircle, CreditCard } from 'lucide-react-native';
 import { useSummary } from '../hooks/useSummary';
 import { useRecentTransactions, RecentTransaction } from '../hooks/useRecentTransactions';
+import { useProfile } from '../hooks/useProfile';
 import { usePreferences } from '../context/PreferencesContext';
 import { formatPercentage, formatShortDate } from '../lib/formatters';
+import { getCategoryById } from '../lib/categories';
 import { Colors, spacing, radius, fontSize, fontWeight, shadow } from '../constants/theme';
 
 // ─── Metric Card ─────────────────────────────────────────────────────────────
@@ -63,30 +66,22 @@ function Skeleton({ height = 60, style }: { height?: number; style?: object }) {
   );
 }
 
-// ─── Category icon map ────────────────────────────────────────────────────────
-const CATEGORY_ICONS: Record<string, string> = {
-  food: '🍽️',
-  shopping: '🛍️',
-  travel: '🚗',
-  utilities: '💡',
-  entertainment: '🎬',
-  health: '⚕️',
-  finance: '💹',
-  transfer: '🔁',
-  other: '💳',
-};
-
 // ─── Transaction Item ────────────────────────────────────────────────────────
 function TransactionItem({ transaction }: { transaction: RecentTransaction }) {
   const { colors, formatAmount } = usePreferences();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const isIncome = transaction.transactionType === 'credit';
-  const icon = transaction.category ? (CATEGORY_ICONS[transaction.category] ?? '💳') : '💳';
+  const cat = getCategoryById(transaction.category);
+  const TxIcon = cat?.icon ?? CreditCard;
+  const iconColor = cat?.color ?? colors.textSecondary;
+  const iconBg = iconColor + '22';
 
   return (
     <View style={styles.txItem}>
       <View style={styles.txLeft}>
-        <Text style={styles.txIcon}>{icon}</Text>
+        <View style={[styles.txIconBg, { backgroundColor: iconBg }]}>
+          <TxIcon size={18} color={iconColor} />
+        </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.txMerchant} numberOfLines={1}>
             {transaction.merchant ?? transaction.subject ?? 'Transaction'}
@@ -124,12 +119,20 @@ function ErrorCard({ onRetry }: { onRetry: () => void }) {
 }
 
 // ─── Dashboard Screen ────────────────────────────────────────────────────────
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
 export default function DashboardScreen() {
   const { colors, formatAmount } = usePreferences();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const { data: summary, isLoading, isError, refetch: refetchSummary } = useSummary('month');
   const { data: recentTxs, isLoading: txLoading, refetch: refetchTxs } = useRecentTransactions(10);
+  const { data: profile } = useProfile();
 
   const [refreshing, setRefreshing] = useState(false);
 
@@ -164,12 +167,18 @@ export default function DashboardScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.greeting}>Good morning 👋</Text>
+            <Text style={styles.greeting}>{getGreeting()} 👋</Text>
             <Text style={styles.subtitle}>Here's your spending overview</Text>
           </View>
-          <View style={styles.avatarCircle}>
-            <Text style={styles.avatarText}>S</Text>
-          </View>
+          {profile?.picture ? (
+            <Image source={{ uri: profile.picture }} style={styles.avatarCircle} />
+          ) : (
+            <View style={styles.avatarCircle}>
+              <Text style={styles.avatarText}>
+                {profile?.name?.[0]?.toUpperCase() ?? profile?.email?.[0]?.toUpperCase() ?? 'S'}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Error State */}
@@ -185,8 +194,8 @@ export default function DashboardScreen() {
           </View>
         ) : !isError && summary ? (
           <View style={styles.metricsGrid}>
-            <MetricCard label="Total Expenses" value={summary.totalExpense} icon={DollarSign} />
-            <MetricCard label="Total Income" value={summary.totalIncome} icon={TrendingUp} />
+            <MetricCard label="Total Expenses" value={summary.totalExpense} trend="down" icon={DollarSign} />
+            <MetricCard label="Total Income" value={summary.totalIncome} trend="up" icon={TrendingUp} />
             <MetricCard
               label="Net Savings"
               value={summary.totalSavings}
@@ -348,7 +357,13 @@ function makeStyles(colors: Colors) {
       borderBottomColor: colors.border,
     },
     txLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flex: 1 },
-    txIcon: { fontSize: 24 },
+    txIconBg: {
+      width: 36,
+      height: 36,
+      borderRadius: radius.md,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
     txMerchant: { fontSize: fontSize.sm, fontWeight: fontWeight.medium, color: colors.text },
     txDate: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: 2 },
     txRight: { alignItems: 'flex-end' },

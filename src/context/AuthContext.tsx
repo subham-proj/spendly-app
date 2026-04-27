@@ -3,11 +3,13 @@ import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { API_BASE } from '../lib/api';
+import { API_ROUTES } from '../constants/api';
 import { queryClient } from '../lib/queryClient';
 
 WebBrowser.maybeCompleteAuthSession();
 
 const JWT_KEY = 'spendly_jwt';
+const DEEP_LINK_CALLBACK = 'spendly://auth/callback';
 
 interface AuthUser {
   email: string;
@@ -53,7 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const handleDeepLink = async (event: { url: string }) => {
     const url = event.url;
-    if (!url.includes('auth/callback')) return;
+    if (!url.includes(DEEP_LINK_CALLBACK)) return;
 
     const { queryParams } = Linking.parse(url);
 
@@ -77,14 +79,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signInWithGoogle = async () => {
     try {
       // Ask backend for the Google auth URL (uses mobileOAuth2Client)
-      const res = await fetch(`${API_BASE}/api/users/auth/mobile-url`);
+      const res = await fetch(`${API_BASE}${API_ROUTES.AUTH_MOBILE_URL}`);
       const { authUrl } = await res.json();
 
       // openAuthSessionAsync intercepts the deep link redirect itself and
       // returns the URL — Linking.addEventListener does NOT fire for this.
       const result = await WebBrowser.openAuthSessionAsync(
         authUrl,
-        'spendly://auth/callback',
+        DEEP_LINK_CALLBACK,
       );
 
       if (result.type === 'success' && result.url) {

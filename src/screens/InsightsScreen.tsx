@@ -16,6 +16,7 @@ import {
 import { useDailyExpenses, DailyExpense } from "../hooks/useDailyExpenses";
 import { useInsights, AiInsight } from "../hooks/useInsights";
 import { getCategoryById } from "../lib/categories";
+import { CreditCard } from "lucide-react-native";
 import { usePreferences } from "../context/PreferencesContext";
 import { formatShortDate } from "../lib/formatters";
 import {
@@ -193,12 +194,15 @@ function CategoryBar({
   const cat = getCategoryById(item.category);
   const pct = maxAmount > 0 ? item.amount / maxAmount : 0;
   const barColor = cat?.color ?? colors.primary;
+  const CatIcon = cat?.icon ?? CreditCard;
 
   return (
     <View style={styles.categoryRow}>
       <View style={styles.categoryHeader}>
         <View style={styles.categoryLeft}>
-          <Text style={styles.categoryIcon}>{cat?.icon ?? "💳"}</Text>
+          <View style={[styles.categoryIconBg, { backgroundColor: barColor + '22' }]}>
+            <CatIcon size={14} color={barColor} />
+          </View>
           <Text style={styles.categoryName}>{cat?.name ?? item.category}</Text>
         </View>
         <View style={styles.categoryRight}>
@@ -568,7 +572,13 @@ function makeStyles(colors: Colors) {
       alignItems: "center",
       gap: spacing.sm,
     },
-    categoryIcon: { fontSize: 18 },
+    categoryIconBg: {
+      width: 28,
+      height: 28,
+      borderRadius: radius.sm,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
     categoryName: {
       fontSize: fontSize.sm,
       fontWeight: fontWeight.medium,

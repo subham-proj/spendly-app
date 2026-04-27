@@ -36,6 +36,7 @@ import {
   CurrencyOption,
 } from '../context/PreferencesContext';
 import { apiFetch } from '../lib/api';
+import { API_ROUTES } from '../constants/api';
 import { Colors, spacing, radius, fontSize, fontWeight, shadow } from '../constants/theme';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -160,7 +161,7 @@ export default function SettingsScreen() {
   // Sync a preference change to the backend (fire-and-forget)
   const patchPreferences = (patch: Record<string, unknown>) => {
     if (!token) return;
-    apiFetch('/api/users/preferences', token, {
+    apiFetch(API_ROUTES.PREFERENCES, token, {
       method: 'PATCH',
       body: JSON.stringify(patch),
     }).catch(() => {});

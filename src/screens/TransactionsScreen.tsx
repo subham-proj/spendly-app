@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
-import { Search, X } from 'lucide-react-native';
+import { Search, X, CreditCard } from 'lucide-react-native';
 import { useTransactions, SortOption, ApiTransaction } from '../hooks/useTransactions';
 import { TRANSACTION_CATEGORIES, getCategoryById } from '../lib/categories';
 import { usePreferences } from '../context/PreferencesContext';
@@ -45,12 +45,14 @@ function TransactionCard({
 }) {
   const cat = getCategoryById(item.category);
   const isCredit = item.transactionType === 'credit';
-  const iconBg = (cat?.color ?? '#9CA3AF') + '22';
+  const iconColor = cat?.color ?? '#9CA3AF';
+  const iconBg = iconColor + '22';
+  const TxIcon = cat?.icon ?? CreditCard;
 
   return (
     <View style={[styles.txCard, shadow.sm]}>
       <View style={[styles.txIconBg, { backgroundColor: iconBg }]}>
-        <Text style={styles.txIcon}>{cat?.icon ?? '💳'}</Text>
+        <TxIcon size={18} color={iconColor} />
       </View>
       <View style={styles.txBody}>
         <Text style={styles.txMerchant} numberOfLines={1}>
@@ -271,7 +273,7 @@ export default function TransactionsScreen() {
               onPress={() => setActiveCategory(active ? '' : item.id)}
               activeOpacity={0.7}
             >
-              <Text style={styles.categoryIcon}>{item.icon}</Text>
+              <item.icon size={14} color={active ? item.color : colors.textMuted} />
               <Text style={[styles.categoryText, active && { color: item.color }]}>
                 {item.name}
               </Text>
@@ -425,7 +427,6 @@ function makeStyles(colors: Colors) {
       borderWidth: 1,
       borderColor: colors.border,
     },
-    categoryIcon: { fontSize: 14, lineHeight: 18 },
     categoryText: {
       fontSize: fontSize.sm,
       color: colors.textSecondary,
@@ -469,7 +470,6 @@ function makeStyles(colors: Colors) {
       alignItems: 'center',
       flexShrink: 0,
     },
-    txIcon: { fontSize: 20 },
     txBody: { flex: 1, gap: 3 },
     txMerchant: {
       fontSize: fontSize.sm,

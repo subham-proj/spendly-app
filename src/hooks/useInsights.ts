@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../lib/api';
+import { API_ROUTES, Period } from '../constants/api';
+import { QUERY_KEYS, CACHE } from '../constants/queryKeys';
 
 export interface AiInsight {
   emoji: string;
@@ -14,15 +16,15 @@ export interface InsightsData {
   insights: AiInsight[];
 }
 
-export function useInsights(period: 'month' | 'all' = 'month') {
+export function useInsights(period: Period = 'month') {
   const { token, signOut } = useAuth();
 
   return useQuery<InsightsData>({
-    queryKey: ['insights', period],
+    queryKey: QUERY_KEYS.insights(period),
     queryFn: async () => {
       try {
         return await apiFetch<InsightsData>(
-          `/api/analytics/insights?period=${period}`,
+          `${API_ROUTES.INSIGHTS}?period=${period}`,
           token!,
         );
       } catch (err: any) {
@@ -31,7 +33,7 @@ export function useInsights(period: 'month' | 'all' = 'month') {
       }
     },
     enabled: !!token,
-    staleTime: 1000 * 60 * 10,   // AI responses are expensive — cache for 10 min
-    gcTime:    1000 * 60 * 20,
+    staleTime: CACHE.STALE_LONG,
+    gcTime:    CACHE.GC_LONG,
   });
 }

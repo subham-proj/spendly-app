@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../lib/api';
+import { API_ROUTES, Period } from '../constants/api';
+import { QUERY_KEYS, CACHE } from '../constants/queryKeys';
 
 export interface SummaryData {
   period: string;
@@ -11,15 +13,15 @@ export interface SummaryData {
   maxSpentCategory: { category: string; amount: number } | null;
 }
 
-export function useSummary(period: 'month' | 'all' = 'month') {
+export function useSummary(period: Period = 'month') {
   const { token, signOut } = useAuth();
 
   return useQuery<SummaryData>({
-    queryKey: ['summary', period],
+    queryKey: QUERY_KEYS.summary(period),
     queryFn: async () => {
       try {
         return await apiFetch<SummaryData>(
-          `/api/analytics/summary?period=${period}`,
+          `${API_ROUTES.SUMMARY}?period=${period}`,
           token!,
         );
       } catch (err: any) {
@@ -28,7 +30,7 @@ export function useSummary(period: 'month' | 'all' = 'month') {
       }
     },
     enabled: !!token,
-    staleTime: 1000 * 60 * 5,
-    gcTime: 1000 * 60 * 10,
+    staleTime: CACHE.STALE_DEFAULT,
+    gcTime:    CACHE.GC_DEFAULT,
   });
 }
