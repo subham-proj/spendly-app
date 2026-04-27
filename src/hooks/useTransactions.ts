@@ -16,6 +16,7 @@ export interface TransactionFilters {
 export interface ApiTransaction {
   _id: string;
   merchant: string | null;
+  shortName: string | null;
   amount: number;
   currency: string;
   category: string | null;

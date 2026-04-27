@@ -34,6 +34,7 @@ export const MOCK_PROFILE: ProfileData = {
 interface MockTx {
   _id: string;
   merchant: string;
+  shortName: string;
   amount: number;
   currency: string;
   category: string;
@@ -51,11 +52,13 @@ function makeTx(
   type: 'debit' | 'credit',
   daysAgo: number,
   from = 'noreply@bank.com',
+  shortName?: string,
 ): MockTx {
   const date = subDays(new Date(), daysAgo);
   return {
     _id: id,
     merchant,
+    shortName: shortName ?? merchant,
     amount,
     currency: 'INR',
     category,
@@ -190,7 +193,7 @@ export const MOCK_RECENT_TRANSACTIONS: RecentTransaction[] = MOCK_TRANSACTIONS
   .slice()
   .sort((a, b) => new Date(b.emailDate).getTime() - new Date(a.emailDate).getTime())
   .slice(0, 10)
-  .map(({ from: _from, ...rest }) => rest);
+  .map(({ from: _from, ...rest }) => rest as RecentTransaction);
 
 // ─── Paginated transactions ───────────────────────────────────────────────────
 

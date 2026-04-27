@@ -84,7 +84,7 @@ function TransactionItem({ transaction }: { transaction: RecentTransaction }) {
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.txMerchant} numberOfLines={1}>
-            {transaction.merchant ?? transaction.subject ?? 'Transaction'}
+            {transaction.shortName ?? transaction.merchant ?? transaction.subject ?? 'Transaction'}
           </Text>
           <Text style={styles.txDate}>{formatShortDate(transaction.emailDate)}</Text>
         </View>

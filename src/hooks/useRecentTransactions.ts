@@ -7,6 +7,7 @@ import { QUERY_KEYS, CACHE } from '../constants/queryKeys';
 export interface RecentTransaction {
   _id: string;
   merchant: string | null;
+  shortName: string | null;
   amount: number;
   currency: string;
   category: string | null;
