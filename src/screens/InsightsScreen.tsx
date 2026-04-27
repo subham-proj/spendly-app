@@ -1,36 +1,209 @@
-import React, { useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from "react";
 import {
   View,
   Text,
   ScrollView,
   StyleSheet,
   SafeAreaView,
-} from 'react-native';
-import { useExpenseData } from '../hooks/useExpenseData';
-import { useMetrics } from '../hooks/useMetrics';
-import { CATEGORIES, calculateCategoryTotal } from '../lib/mockData';
-import { usePreferences } from '../context/PreferencesContext';
-import { formatPercentage } from '../lib/formatters';
-import { Colors, spacing, radius, fontSize, fontWeight, shadow } from '../constants/theme';
+  TouchableOpacity,
+  RefreshControl,
+} from "react-native";
+import { useSummary } from "../hooks/useSummary";
+import {
+  useCategoryExpenses,
+  CategoryExpense,
+} from "../hooks/useCategoryExpenses";
+import { useDailyExpenses, DailyExpense } from "../hooks/useDailyExpenses";
+import { useInsights, AiInsight } from "../hooks/useInsights";
+import { getCategoryById } from "../lib/categories";
+import { usePreferences } from "../context/PreferencesContext";
+import { formatShortDate, formatPercentage } from "../lib/formatters";
+import {
+  Colors,
+  spacing,
+  radius,
+  fontSize,
+  fontWeight,
+  shadow,
+} from "../constants/theme";
 
-function CategoryBar({ category, total, max }: { category: any; total: number; max: number }) {
-  const { colors, formatAmount } = usePreferences();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
-  const pct = max > 0 ? total / max : 0;
-  const overBudget = total > category.budget;
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const todayStr = new Date().toLocaleDateString("en-CA", {
+  timeZone: "Asia/Kolkata",
+});
+
+const PERIOD_OPTIONS: { label: string; value: "month" | "all" }[] = [
+  { label: "This Month", value: "month" },
+  { label: "All Time", value: "all" },
+];
+
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
+function Skeleton({
+  colors,
+  height = 56,
+  borderRadius: br = radius.md,
+}: {
+  colors: Colors;
+  height?: number;
+  borderRadius?: number;
+}) {
+  return (
+    <View
+      style={{ height, borderRadius: br, backgroundColor: colors.border }}
+    />
+  );
+}
+
+// ─── Summary Card ─────────────────────────────────────────────────────────────
+function SummaryCard({
+  label,
+  value,
+  valueColor,
+  styles,
+}: {
+  label: string;
+  value: string;
+  valueColor: string;
+  styles: ReturnType<typeof makeStyles>;
+}) {
+  return (
+    <View style={[styles.summaryCard, shadow.sm]}>
+      <Text style={styles.summaryLabel}>{label}</Text>
+      <Text style={[styles.summaryValue, { color: valueColor }]}>{value}</Text>
+    </View>
+  );
+}
+
+// ─── Insight Card ─────────────────────────────────────────────────────────────
+function InsightCard({
+  insight,
+  styles,
+}: {
+  insight: AiInsight;
+  styles: ReturnType<typeof makeStyles>;
+}) {
+  return (
+    <View
+      style={[
+        styles.insightCard,
+        { borderLeftColor: insight.accent },
+        shadow.sm,
+      ]}
+    >
+      <Text style={styles.insightEmoji}>{insight.emoji}</Text>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.insightTitle}>{insight.title}</Text>
+        <Text style={styles.insightDesc}>{insight.description}</Text>
+      </View>
+    </View>
+  );
+}
+
+// ─── Spending Chart ───────────────────────────────────────────────────────────
+function SpendingChart({
+  data,
+  colors,
+  formatAmount,
+}: {
+  data: DailyExpense[];
+  colors: Colors;
+  formatAmount: (n: number) => string;
+}) {
+  if (!data.length) return null;
+
+  const max = Math.max(...data.map((d) => d.amount), 1);
+  const chartHeight = 80;
+  const peak = data.reduce((p, c) => (c.amount > p.amount ? c : p), data[0]);
+
+  // Show date labels for every 7th bar (first, ~7, ~14, ~21, last)
+  const labelIndices = new Set([0, 6, 13, 20, data.length - 1]);
+
+  return (
+    <View>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "flex-end",
+          height: chartHeight,
+          gap: 2,
+        }}
+      >
+        {data.map((day, i) => {
+          const barH =
+            day.amount > 0 ? Math.max((day.amount / max) * chartHeight, 4) : 2;
+          const isToday = day.date === todayStr;
+          return (
+            <View
+              key={day.date}
+              style={{
+                flex: 1,
+                height: barH,
+                borderRadius: 2,
+                backgroundColor: isToday
+                  ? colors.primary
+                  : colors.primary + "50",
+              }}
+            />
+          );
+        })}
+      </View>
+
+      {/* X-axis date labels */}
+      <View style={{ flexDirection: "row", marginTop: spacing.xs }}>
+        {data.map((day, i) => (
+          <View key={day.date} style={{ flex: 1, alignItems: "center" }}>
+            {labelIndices.has(i) && (
+              <Text style={{ fontSize: 9, color: colors.textMuted }}>
+                {formatShortDate(day.date).replace(/\s/, "\n")}
+              </Text>
+            )}
+          </View>
+        ))}
+      </View>
+
+      {peak.amount > 0 && (
+        <Text
+          style={{
+            color: colors.textMuted,
+            fontSize: fontSize.xs,
+            marginTop: spacing.xs,
+          }}
+        >
+          Peak: {formatAmount(peak.amount)} on {formatShortDate(peak.date)}
+        </Text>
+      )}
+    </View>
+  );
+}
+
+// ─── Category Bar ─────────────────────────────────────────────────────────────
+function CategoryBar({
+  item,
+  maxAmount,
+  styles,
+  colors,
+  formatAmount,
+}: {
+  item: CategoryExpense;
+  maxAmount: number;
+  styles: ReturnType<typeof makeStyles>;
+  colors: Colors;
+  formatAmount: (n: number) => string;
+}) {
+  const cat = getCategoryById(item.category);
+  const pct = maxAmount > 0 ? item.amount / maxAmount : 0;
+  const barColor = cat?.color ?? colors.primary;
 
   return (
     <View style={styles.categoryRow}>
       <View style={styles.categoryHeader}>
         <View style={styles.categoryLeft}>
-          <Text style={styles.categoryIcon}>{category.icon}</Text>
-          <Text style={styles.categoryName}>{category.name}</Text>
+          <Text style={styles.categoryIcon}>{cat?.icon ?? "💳"}</Text>
+          <Text style={styles.categoryName}>{cat?.name ?? item.category}</Text>
         </View>
         <View style={styles.categoryRight}>
-          <Text style={[styles.categoryAmount, overBudget && { color: colors.red }]}>
-            {formatAmount(total)}
-          </Text>
-          <Text style={styles.categoryBudget}>of {formatAmount(category.budget)}</Text>
+          <Text style={styles.categoryAmount}>{formatAmount(item.amount)}</Text>
+          <Text style={styles.categoryPct}>{item.percentage.toFixed(1)}%</Text>
         </View>
       </View>
       <View style={styles.barBg}>
@@ -39,191 +212,369 @@ function CategoryBar({ category, total, max }: { category: any; total: number; m
             styles.barFill,
             {
               width: `${Math.min(pct * 100, 100)}%`,
-              backgroundColor: overBudget ? colors.red : category.color,
+              backgroundColor: barColor,
             },
           ]}
         />
       </View>
-      {overBudget && (
-        <Text style={styles.overBudget}>
-          Over budget by {formatAmount(total - category.budget)}
-        </Text>
-      )}
     </View>
   );
 }
 
-function InsightCard({ emoji, title, description, accent }: {
-  emoji: string;
-  title: string;
-  description: string;
-  accent: string;
-}) {
-  const { colors } = usePreferences();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
-  return (
-    <View style={[styles.insightCard, { borderLeftColor: accent }, shadow.sm]}>
-      <Text style={styles.insightEmoji}>{emoji}</Text>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.insightTitle}>{title}</Text>
-        <Text style={styles.insightDesc}>{description}</Text>
-      </View>
-    </View>
-  );
-}
-
+// ─── Insights Screen ──────────────────────────────────────────────────────────
 export default function InsightsScreen() {
   const { colors, formatAmount } = usePreferences();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
-  const { data, isLoading } = useExpenseData();
-  const metrics = useMetrics(data?.transactions);
-  const transactions = data?.transactions ?? [];
+  const [period, setPeriod] = useState<"month" | "all">("month");
+  const [refreshing, setRefreshing] = useState(false);
 
-  const categoryTotals = CATEGORIES.map((cat) => ({
-    ...cat,
-    total: calculateCategoryTotal(transactions, cat.id),
-  })).sort((a, b) => b.total - a.total);
+  const {
+    data: summary,
+    isLoading: summaryLoading,
+    refetch: refetchSummary,
+  } = useSummary(period);
+  const {
+    data: catData,
+    isLoading: catLoading,
+    refetch: refetchCat,
+  } = useCategoryExpenses(period);
+  const {
+    data: daily,
+    isLoading: dailyLoading,
+    refetch: refetchDaily,
+  } = useDailyExpenses();
+  const {
+    data: aiData,
+    isLoading: insightsLoading,
+    refetch: refetchInsights,
+  } = useInsights(period);
 
-  const maxTotal = Math.max(...categoryTotals.map((c) => c.total), 1);
-  const topCategory = categoryTotals[0];
-  const overBudgetCount = categoryTotals.filter((c) => c.total > c.budget).length;
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([
+      refetchSummary(),
+      refetchCat(),
+      refetchDaily(),
+      refetchInsights(),
+    ]);
+    setRefreshing(false);
+  }, [refetchSummary, refetchCat, refetchDaily, refetchInsights]);
+
+  const categories = catData?.categories ?? [];
+  const maxCatAmount = categories.length > 0 ? categories[0].amount : 1;
+  const dailyData = daily?.data ?? [];
+  const insights = aiData?.insights ?? [];
+
+  const savingsColor =
+    (summary?.totalSavings ?? 0) >= 0 ? colors.income : colors.red;
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-
-        {/* Summary cards */}
-        <View style={styles.summaryRow}>
-          <View style={[styles.summaryCard, shadow.sm]}>
-            <Text style={styles.summaryLabel}>Savings Rate</Text>
-            <Text style={[styles.summaryValue, { color: colors.primary }]}>
-              {formatPercentage(metrics.savingsRate.value)}
-            </Text>
-          </View>
-          <View style={[styles.summaryCard, shadow.sm]}>
-            <Text style={styles.summaryLabel}>Net Savings</Text>
-            <Text style={[styles.summaryValue, { color: metrics.netSavings.value >= 0 ? colors.primary : colors.red }]}>
-              {formatAmount(metrics.netSavings.value)}
-            </Text>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
+      >
+        {/* ── Header ──────────────────────────────────────────────────────── */}
+        <View style={styles.header}>
+          <Text style={styles.screenTitle}>Insights</Text>
+          <View style={styles.periodRow}>
+            {PERIOD_OPTIONS.map((opt) => {
+              const active = period === opt.value;
+              return (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={[styles.periodChip, active && styles.periodChipActive]}
+                  onPress={() => setPeriod(opt.value)}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={[
+                      styles.periodChipText,
+                      active && styles.periodChipTextActive,
+                    ]}
+                  >
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 
-        {/* AI Insights */}
-        <Text style={styles.sectionTitle}>Insights</Text>
-        <View style={styles.insightsList}>
-          {topCategory && topCategory.total > 0 && (
-            <InsightCard
-              emoji="🏆"
-              title={`Top Spend: ${topCategory.name}`}
-              description={`You've spent ${formatAmount(topCategory.total)} this month on ${topCategory.name}.`}
-              accent={topCategory.color}
+        {/* ── Summary Row ─────────────────────────────────────────────────── */}
+        {summaryLoading ? (
+          <View style={styles.summaryRow}>
+            {[1, 2, 3].map((i) => (
+              <Skeleton
+                key={i}
+                colors={colors}
+                height={72}
+                borderRadius={radius.lg}
+              />
+            ))}
+          </View>
+        ) : (
+          <View style={styles.summaryRow}>
+            <SummaryCard
+              label="Spent"
+              value={formatAmount(summary?.totalExpense ?? 0)}
+              valueColor={colors.red}
+              styles={styles}
             />
-          )}
-          {overBudgetCount > 0 && (
-            <InsightCard
-              emoji="⚠️"
-              title={`${overBudgetCount} categor${overBudgetCount > 1 ? 'ies' : 'y'} over budget`}
-              description="Review your spending in categories marked in red below."
-              accent={colors.red}
+            <SummaryCard
+              label="Income"
+              value={formatAmount(summary?.totalIncome ?? 0)}
+              valueColor={colors.income}
+              styles={styles}
             />
-          )}
-          {metrics.savingsRate.value > 20 && (
-            <InsightCard
-              emoji="🎉"
-              title="Great savings rate!"
-              description={`You're saving ${formatPercentage(metrics.savingsRate.value)} of your income. Keep it up!`}
-              accent={colors.primary}
+            <SummaryCard
+              label="Saved"
+              value={formatAmount(summary?.totalSavings ?? 0)}
+              valueColor={savingsColor}
+              styles={styles}
             />
-          )}
-          {metrics.savingsRate.value <= 0 && (
-            <InsightCard
-              emoji="💡"
-              title="Spending exceeds income"
-              description="Your expenses this month are higher than your recorded income."
-              accent={colors.amber}
-            />
-          )}
-        </View>
+          </View>
+        )}
 
-        {/* Category Breakdown */}
-        <Text style={styles.sectionTitle}>Category Breakdown</Text>
+        {/* ── Spending Trend ───────────────────────────────────────────────── */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Spending Trend</Text>
+          <Text style={styles.sectionSub}>Last 30 days</Text>
+        </View>
         <View style={[styles.card, shadow.sm]}>
-          {isLoading
-            ? Array.from({ length: 5 }).map((_, i) => (
-                <View key={i} style={[styles.skeleton, { backgroundColor: colors.border }]} />
-              ))
-            : categoryTotals.map((cat) => (
-                <CategoryBar key={cat.id} category={cat} total={cat.total} max={maxTotal} />
+          {dailyLoading ? (
+            <Skeleton colors={colors} height={80} borderRadius={radius.sm} />
+          ) : (
+            <SpendingChart
+              data={dailyData}
+              colors={colors}
+              formatAmount={formatAmount}
+            />
+          )}
+        </View>
+
+        {/* ── AI Insights ─────────────────────────────────────────────────── */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>AI Insights ✨</Text>
+        </View>
+        {insightsLoading ? (
+          <View style={{ gap: spacing.sm }}>
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} colors={colors} height={68} />
+            ))}
+          </View>
+        ) : insights.length === 0 ? (
+          <View style={[styles.card, shadow.sm]}>
+            <Text style={styles.emptyText}>
+              No insights yet. Add more transactions to get AI-powered analysis.
+            </Text>
+          </View>
+        ) : (
+          <View style={{ gap: spacing.sm }}>
+            {insights.map((insight, i) => (
+              <InsightCard key={i} insight={insight} styles={styles} />
+            ))}
+          </View>
+        )}
+
+        {/* ── Category Breakdown ──────────────────────────────────────────── */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>By Category</Text>
+          {catData && (
+            <Text style={styles.sectionSub}>
+              {formatAmount(catData.total)} total
+            </Text>
+          )}
+        </View>
+        <View style={[styles.card, shadow.sm]}>
+          {catLoading ? (
+            <View style={{ gap: spacing.md }}>
+              {[1, 2, 3, 4].map((i) => (
+                <Skeleton key={i} colors={colors} height={48} />
               ))}
+            </View>
+          ) : categories.length === 0 ? (
+            <Text style={styles.emptyText}>
+              No expense data for this period.
+            </Text>
+          ) : (
+            <View style={{ gap: spacing.md }}>
+              {categories.map((cat) => (
+                <CategoryBar
+                  key={cat.category}
+                  item={cat}
+                  maxAmount={maxCatAmount}
+                  styles={styles}
+                  colors={colors}
+                  formatAmount={formatAmount}
+                />
+              ))}
+            </View>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
 function makeStyles(colors: Colors) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    content: { padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
+    content: {
+      padding: spacing.md,
+      paddingBottom: spacing.xxl,
+      gap: spacing.md,
+    },
 
-    summaryRow: { flexDirection: 'row', gap: spacing.sm },
+    // Header
+    header: { gap: spacing.sm },
+    screenTitle: {
+      fontSize: fontSize.xxl,
+      fontWeight: fontWeight.bold,
+      color: colors.text,
+    },
+    periodRow: { flexDirection: "row", gap: spacing.xs },
+    periodChip: {
+      paddingHorizontal: spacing.sm + 4,
+      paddingVertical: spacing.xs + 2,
+      borderRadius: radius.full,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    periodChipActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    periodChipText: {
+      fontSize: fontSize.sm,
+      fontWeight: fontWeight.medium,
+      color: colors.textSecondary,
+    },
+    periodChipTextActive: {
+      color: "#fff",
+      fontWeight: fontWeight.semibold,
+    },
+
+    // Summary
+    summaryRow: { flexDirection: "row", gap: spacing.sm },
     summaryCard: {
       flex: 1,
       backgroundColor: colors.surface,
       borderRadius: radius.lg,
       padding: spacing.md,
-      alignItems: 'center',
+      alignItems: "center",
       gap: spacing.xs,
     },
-    summaryLabel: { fontSize: fontSize.sm, color: colors.textSecondary, fontWeight: fontWeight.medium },
-    summaryValue: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold },
+    summaryLabel: {
+      fontSize: fontSize.xs,
+      color: colors.textSecondary,
+      fontWeight: fontWeight.medium,
+    },
+    summaryValue: {
+      fontSize: fontSize.md,
+      fontWeight: fontWeight.bold,
+    },
 
+    // Section headers
+    sectionHeader: {
+      flexDirection: "row",
+      alignItems: "baseline",
+      gap: spacing.sm,
+      marginTop: spacing.xs,
+    },
     sectionTitle: {
       fontSize: fontSize.lg,
       fontWeight: fontWeight.semibold,
       color: colors.text,
-      marginTop: spacing.xs,
+    },
+    sectionSub: {
+      fontSize: fontSize.xs,
+      color: colors.textMuted,
     },
 
-    insightsList: { gap: spacing.sm },
-    insightCard: {
-      backgroundColor: colors.surface,
-      borderRadius: radius.md,
-      padding: spacing.md,
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: spacing.sm,
-      borderLeftWidth: 4,
-    },
-    insightEmoji: { fontSize: 22, marginTop: 1 },
-    insightTitle: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text },
-    insightDesc: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: 2, lineHeight: 16 },
-
+    // Card
     card: {
       backgroundColor: colors.surface,
       borderRadius: radius.lg,
       padding: spacing.md,
-      gap: spacing.md,
     },
 
+    // Insight cards
+    insightCard: {
+      backgroundColor: colors.surface,
+      borderRadius: radius.md,
+      padding: spacing.md,
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: spacing.sm,
+      borderLeftWidth: 4,
+    },
+    insightEmoji: { fontSize: 22, marginTop: 1 },
+    insightTitle: {
+      fontSize: fontSize.sm,
+      fontWeight: fontWeight.semibold,
+      color: colors.text,
+    },
+    insightDesc: {
+      fontSize: fontSize.xs,
+      color: colors.textSecondary,
+      marginTop: 3,
+      lineHeight: 16,
+    },
+
+    // Category bars
     categoryRow: { gap: spacing.xs },
-    categoryHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    categoryLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+    categoryHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    categoryLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.sm,
+    },
     categoryIcon: { fontSize: 18 },
-    categoryName: { fontSize: fontSize.sm, fontWeight: fontWeight.medium, color: colors.text },
-    categoryRight: { alignItems: 'flex-end' },
-    categoryAmount: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.text },
-    categoryBudget: { fontSize: fontSize.xs, color: colors.textMuted },
+    categoryName: {
+      fontSize: fontSize.sm,
+      fontWeight: fontWeight.medium,
+      color: colors.text,
+    },
+    categoryRight: { alignItems: "flex-end" },
+    categoryAmount: {
+      fontSize: fontSize.sm,
+      fontWeight: fontWeight.bold,
+      color: colors.text,
+    },
+    categoryPct: {
+      fontSize: fontSize.xs,
+      color: colors.textMuted,
+    },
     barBg: {
       height: 8,
       backgroundColor: colors.border,
       borderRadius: radius.full,
-      overflow: 'hidden',
+      overflow: "hidden",
     },
-    barFill: { height: '100%', borderRadius: radius.full },
-    overBudget: { fontSize: fontSize.xs, color: colors.red, fontWeight: fontWeight.medium },
+    barFill: { height: "100%", borderRadius: radius.full },
 
-    skeleton: { height: 48, borderRadius: radius.md },
+    // Empty
+    emptyText: {
+      fontSize: fontSize.sm,
+      color: colors.textSecondary,
+      textAlign: "center",
+      paddingVertical: spacing.sm,
+    },
   });
 }
