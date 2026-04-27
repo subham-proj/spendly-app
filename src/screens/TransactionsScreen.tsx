@@ -422,6 +422,8 @@ function makeStyles(colors: Colors) {
       gap: 5,
       height: 34,
       paddingHorizontal: spacing.sm + 4,
+      marginTop: spacing.sm,
+      marginBottom:spacing.sm,
       borderRadius: radius.full,
       backgroundColor: colors.surface,
       borderWidth: 1,
