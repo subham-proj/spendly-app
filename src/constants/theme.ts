@@ -1,19 +1,19 @@
-export const colors = {
-  primary: '#10B981',       // emerald-500
-  primaryLight: '#D1FAE5',  // emerald-100
-  primaryDark: '#059669',   // emerald-600
+export const lightColors = {
+  primary: '#10B981',
+  primaryLight: '#D1FAE5',
+  primaryDark: '#059669',
 
-  background: '#F9FAFB',    // gray-50
+  background: '#F9FAFB',
   surface: '#FFFFFF',
-  border: '#F3F4F6',        // gray-100
+  border: '#F3F4F6',
 
-  text: '#111827',          // gray-900
-  textSecondary: '#6B7280', // gray-500
-  textMuted: '#9CA3AF',     // gray-400
+  text: '#111827',
+  textSecondary: '#6B7280',
+  textMuted: '#9CA3AF',
 
-  income: '#10B981',        // emerald
-  expense: '#111827',       // gray-900
-  recurring: '#F59E0B',     // amber-500
+  income: '#10B981',
+  expense: '#111827',
+  recurring: '#F59E0B',
 
   red: '#EF4444',
   redLight: '#FEE2E2',
@@ -27,6 +27,40 @@ export const colors = {
   purple: '#8B5CF6',
   purpleLight: '#EDE9FE',
 };
+
+export const darkColors = {
+  primary: '#10B981',
+  primaryLight: '#064E3B',
+  primaryDark: '#059669',
+
+  background: '#0F172A',
+  surface: '#1E293B',
+  border: '#334155',
+
+  text: '#F1F5F9',
+  textSecondary: '#94A3B8',
+  textMuted: '#64748B',
+
+  income: '#10B981',
+  expense: '#F1F5F9',
+  recurring: '#F59E0B',
+
+  red: '#F87171',
+  redLight: '#450A0A',
+
+  amber: '#FBBF24',
+  amberLight: '#451A03',
+
+  blue: '#60A5FA',
+  blueLight: '#1E3A5F',
+
+  purple: '#A78BFA',
+  purpleLight: '#2E1065',
+};
+
+// Keep backward-compatible `colors` export pointing to light — screens use PreferencesContext at runtime
+export const colors = lightColors;
+export type Colors = typeof lightColors;
 
 export const spacing = {
   xs: 4,
