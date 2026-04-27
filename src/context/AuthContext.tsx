@@ -3,6 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { API_BASE } from '../lib/api';
+import { queryClient } from '../lib/queryClient';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -98,6 +99,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await SecureStore.deleteItemAsync(JWT_KEY);
     setToken(null);
     setUser(null);
+    // Clear all cached query data so re-login always fetches fresh data
+    queryClient.clear();
   };
 
   return (

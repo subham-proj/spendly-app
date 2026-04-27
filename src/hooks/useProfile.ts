@@ -4,9 +4,16 @@ import { apiFetch } from '../lib/api';
 
 export interface ProfileData {
   email: string;
+  name: string | null;
+  picture: string | null;
   memberSince: string;
   gmailConnected: boolean;
   lastSynced: string;
+  preferences: {
+    currency: string;
+    notificationsEnabled: boolean;
+    themeMode: string;
+  };
 }
 
 export function useProfile() {
