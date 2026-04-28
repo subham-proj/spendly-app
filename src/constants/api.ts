@@ -6,6 +6,7 @@ export const API_ROUTES = {
   PREFERENCES:        '/api/users/preferences',
   // Transactions
   TRANSACTIONS:       '/api/transactions',
+  TRANSACTION:        (id: string) => `/api/transactions/${id}`,
   // Analytics
   SUMMARY:            '/api/analytics/summary',
   INSIGHTS:           '/api/analytics/insights',

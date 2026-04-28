@@ -2,13 +2,14 @@ import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { View, ActivityIndicator, StyleSheet, Platform } from "react-native";
+import { View, ActivityIndicator, StyleSheet, Platform, TouchableOpacity } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import {
   LayoutDashboard,
   List,
   TrendingUp,
   Settings,
+  ChevronLeft,
 } from "lucide-react-native";
 
 import { useEffect } from "react";
@@ -21,10 +22,53 @@ import DashboardScreen from "../screens/DashboardScreen";
 import TransactionsScreen from "../screens/TransactionsScreen";
 import InsightsScreen from "../screens/InsightsScreen";
 import SettingsScreen from "../screens/SettingsScreen";
+import ManageTransactionsScreen from "../screens/ManageTransactionsScreen";
 import { fontSize, fontWeight } from "../constants/theme";
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
+const SettingsStack = createNativeStackNavigator<{
+  SettingsHome: undefined;
+  ManageTransactions: undefined;
+}>();
+
+function SettingsNavigator() {
+  const { colors } = usePreferences();
+  return (
+    <SettingsStack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: colors.surface },
+        headerTintColor: colors.text,
+        headerShadowVisible: false,
+        headerTitleStyle: {
+          fontWeight: fontWeight.semibold,
+          fontSize: fontSize.md,
+        },
+      }}
+    >
+      <SettingsStack.Screen
+        name="SettingsHome"
+        component={SettingsScreen}
+        options={{ headerShown: false }}
+      />
+      <SettingsStack.Screen
+        name="ManageTransactions"
+        component={ManageTransactionsScreen}
+        options={({ navigation }) => ({
+          title: "Manage Transactions",
+          headerLeft: () => (
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              style={{ width: 40, height: 40, justifyContent: "center", alignItems: "center" }}
+            >
+              <ChevronLeft size={24} color={colors.text} />
+            </TouchableOpacity>
+          ),
+        })}
+      />
+    </SettingsStack.Navigator>
+  );
+}
 
 function MainTabs() {
   const { colors } = usePreferences();
@@ -74,7 +118,7 @@ function MainTabs() {
       />
       <Tab.Screen
         name="Settings"
-        component={SettingsScreen}
+        component={SettingsNavigator}
         options={{
           tabBarIcon: ({ color, size }) => (
             <Settings size={size} color={color} />

@@ -25,8 +25,10 @@ import {
   Smartphone,
   RefreshCw,
   User as UserIcon,
+  SlidersHorizontal,
 } from 'lucide-react-native';
 import { format, formatDistanceToNow } from 'date-fns';
+import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { useProfile } from '../hooks/useProfile';
 import {
@@ -147,6 +149,7 @@ function ProfileSkeleton() {
 
 // ─── Settings Screen ──────────────────────────────────────────────────────────
 export default function SettingsScreen() {
+  const navigation = useNavigation<any>();
   const { token, signOut } = useAuth();
   const { data: profile, isLoading } = useProfile();
   const {
@@ -316,6 +319,17 @@ export default function SettingsScreen() {
                 thumbColor={notificationsEnabled ? colors.primary : colors.textMuted}
               />
             }
+          />
+        </Section>
+
+        {/* ─── Data ─────────────────────────────────────────────────────── */}
+        <Section title="Data">
+          <SettingRow
+            icon={SlidersHorizontal}
+            iconColor={colors.primary}
+            label="Manage Transactions"
+            sublabel="Edit categories, amounts & delete"
+            onPress={() => navigation.navigate('ManageTransactions')}
           />
         </Section>
 

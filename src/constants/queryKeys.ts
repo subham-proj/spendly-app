@@ -7,8 +7,10 @@ export const QUERY_KEYS = {
   categoryExpenses:   (period: string) => ['category-expenses', period] as const,
   dailyExpenses:      () => ['daily-expenses']                   as const,
   recentTransactions: (limit: number) => ['recent-transactions', limit] as const,
-  transactions:       (filters: TransactionFilters) => ['transactions', filters] as const,
-  expenses:           () => ['expenses']                         as const,
+  transactions:           (filters: TransactionFilters) => ['transactions', filters] as const,
+  transactionsBase:       () => ['transactions']                  as const,
+  recentTransactionsBase: () => ['recent-transactions']           as const,
+  expenses:               () => ['expenses']                      as const,
 } as const;
 
 // Cache timing constants (milliseconds)
