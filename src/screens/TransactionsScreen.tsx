@@ -56,7 +56,7 @@ function TransactionCard({
       </View>
       <View style={styles.txBody}>
         <Text style={styles.txMerchant} numberOfLines={1}>
-          {item.shortName ?? item.merchant ?? cat?.name ?? 'Transaction'}
+          {item.shortName || item.merchant || cat?.name || 'Transaction'}
         </Text>
         <Text style={styles.txMeta}>
           {item.merchant
